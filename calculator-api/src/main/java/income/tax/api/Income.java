@@ -5,17 +5,14 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.google.common.base.Preconditions;
 import lombok.Value;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.LocalDate;
-import java.time.Month;
 import java.time.OffsetDateTime;
-import java.time.Period;
-import java.time.temporal.TemporalAdjusters;
+import java.time.ZoneOffset;
 
-@Value(staticConstructor = "of")
+@Value
 @JsonDeserialize
 public class Income {
+
+  public static final Income ZERO = new Income(0, IncomeType.system, OffsetDateTime.now(ZoneOffset.UTC), OffsetDateTime.now(ZoneOffset.UTC));
 
   public final long income;
   public final IncomeType incomeType;
@@ -24,7 +21,7 @@ public class Income {
 
   @JsonCreator
   public Income(long income, IncomeType incomeType, OffsetDateTime start, OffsetDateTime end) {
-    Preconditions.checkArgument(income > 0, "income must be positive");
+    Preconditions.checkArgument(income >= 0, "income must be positive");
     this.income = income;
     this.incomeType = Preconditions.checkNotNull(incomeType, "incomeType");
     this.start = Preconditions.checkNotNull(start, "start");

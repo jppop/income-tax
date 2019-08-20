@@ -13,13 +13,15 @@ public final class Contributor {
 
   public final String contributorId;
   public final OffsetDateTime registrationDate;
-  public final long incomeBeforeRegistration;
+  public final long previousYearlyIncome;
+  public final IncomeType incomeType;
 
   @JsonCreator
-  public Contributor(String contributorId, OffsetDateTime registrationDate, long incomeBeforeRegistration) {
+  public Contributor(String contributorId, OffsetDateTime registrationDate, long previousYearlyIncome, IncomeType incomeType) {
     this.contributorId = Preconditions.checkNotNull(contributorId, "message");
     this.registrationDate = Preconditions.checkNotNull(registrationDate, "registrationDate");
-    Preconditions.checkState(incomeBeforeRegistration >=0, "incomeBeforeRegistration must be positive");
-    this.incomeBeforeRegistration = incomeBeforeRegistration;
+    this.incomeType = Preconditions.checkNotNull(incomeType, "incomeType");
+    Preconditions.checkState(previousYearlyIncome >=0, "incomeBeforeRegistration must be positive");
+    this.previousYearlyIncome = previousYearlyIncome;
   }
 }

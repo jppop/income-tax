@@ -12,8 +12,18 @@ public class DateUtils {
           LocalTime.MIN,
           dateTime.getOffset());
 
+  public static UnaryOperator<OffsetDateTime> minFirstDayOfYear = dateTime ->
+      OffsetDateTime.of(dateTime.with(TemporalAdjusters.firstDayOfYear()).toLocalDate(),
+          LocalTime.MIN,
+          dateTime.getOffset());
+
   public static UnaryOperator<OffsetDateTime> maxLastDayOfMonth = dateTime ->
       OffsetDateTime.of(dateTime.with(TemporalAdjusters.lastDayOfMonth()).toLocalDate(),
+          LocalTime.MAX,
+          dateTime.getOffset());
+
+  public static UnaryOperator<OffsetDateTime> maxLastDayOfYear = dateTime ->
+      OffsetDateTime.of(dateTime.with(TemporalAdjusters.lastDayOfYear()).toLocalDate(),
           LocalTime.MAX,
           dateTime.getOffset());
 

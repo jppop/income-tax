@@ -23,7 +23,7 @@ import java.time.ZoneOffset;
 @JsonDeserialize
 public final class IncomeTaxState implements CompressedJsonable {
 
-  public static IncomeTaxState empty = new IncomeTaxState("nobody", OffsetDateTime.now(ZoneOffset.UTC));
+  public static IncomeTaxState empty = new IncomeTaxState("nobody", OffsetDateTime.now(ZoneOffset.UTC), Income.ZERO);
 
   public final @NonNull
   String contributorId;
@@ -32,7 +32,7 @@ public final class IncomeTaxState implements CompressedJsonable {
   OffsetDateTime registeredDate;
 
   public final @NonNull
-  IntTreePMap<Income> yearlyPreviousIncomes;
+  PMap<Integer, Income> yearlyPreviousIncomes;
 
   public final int contributionYear;
 
@@ -45,8 +45,9 @@ public final class IncomeTaxState implements CompressedJsonable {
   @JsonCreator
   public IncomeTaxState(
       @NonNull String contributorId, @NonNull OffsetDateTime registeredDate,
-      @NonNull IntTreePMap<Income> yearlyPreviousIncomes,
-      int contributionYear, PVector<Income> currentIncomes, @NonNull PMap<ContributionType, Contribution> contributions) {
+      @NonNull PMap<Integer, Income> yearlyPreviousIncomes,
+      int contributionYear, PVector<Income> currentIncomes,
+      @NonNull PMap<ContributionType, Contribution> contributions) {
     this.contributorId = Preconditions.checkNotNull(contributorId, "message");
     this.registeredDate = Preconditions.checkNotNull(registeredDate, "registeredDate");
     this.yearlyPreviousIncomes = Preconditions.checkNotNull(yearlyPreviousIncomes, "yearlyPreviousIncomes");
@@ -55,8 +56,10 @@ public final class IncomeTaxState implements CompressedJsonable {
     this.contributions = Preconditions.checkNotNull(contributions, "contributions");
   }
 
-  IncomeTaxState(@NonNull String contributorId, @NonNull OffsetDateTime registeredDate) {
-    this(contributorId, registeredDate, IntTreePMap.empty(), registeredDate.getYear(), TreePVector.empty(), HashTreePMap.empty());
+  IncomeTaxState(@NonNull String contributorId, @NonNull OffsetDateTime registeredDate, Income previousYearlyIncome) {
+    this(contributorId, registeredDate,
+        IntTreePMap.singleton(previousYearlyIncome.start.getYear(), previousYearlyIncome),
+        registeredDate.getYear(), TreePVector.empty(), HashTreePMap.empty());
   }
 
   IncomeTaxState applyIncome(Income income) {

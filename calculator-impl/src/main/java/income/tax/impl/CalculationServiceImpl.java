@@ -31,9 +31,12 @@ public class CalculationServiceImpl implements CalculationService {
   public ServiceCall<Contributor, Done> register() {
     return contributor -> {
       // Look up the IncomeTax entity for the given ID.
-      PersistentEntityRef<IncomeTaxCommand> ref = persistentEntityRegistry.refFor(IncomeTaxEntity.class, contributor.contributorId);
+      PersistentEntityRef<IncomeTaxCommand> ref =
+          persistentEntityRegistry.refFor(IncomeTaxEntity.class, contributor.contributorId);
       // Tell the entity to use the greeting message specified.
-      return ref.ask(new IncomeTaxCommand.Register(contributor.contributorId, contributor.registrationDate));
+      return ref.ask(new IncomeTaxCommand.Register(
+          contributor.contributorId, contributor.registrationDate,
+          contributor.previousYearlyIncome, contributor.incomeType));
     };
 
   }
@@ -65,8 +68,8 @@ public class CalculationServiceImpl implements CalculationService {
           if (eventAndOffset.first() instanceof IncomeTaxEvent.Registered) {
             IncomeTaxEvent.Registered registered = (IncomeTaxEvent.Registered) eventAndOffset.first();
             eventToPublish = new CalculationEvent.Registered(
-                registered.getContributorId(), registered.getRegistrationDate()
-            );
+                registered.getContributorId(), registered.getRegistrationDate(),
+                registered.previousYearlyIncome.income, registered.previousYearlyIncome.incomeType);
           } else {
             throw new IllegalArgumentException("Unknown event: " + eventAndOffset.first());
           }

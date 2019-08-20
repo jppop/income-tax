@@ -1,6 +1,8 @@
 package income.tax.impl;
 
 import income.tax.api.Income;
+import income.tax.api.IncomeType;
+import income.tax.impl.tools.DateUtils;
 import lombok.NonNull;
 import lombok.Value;
 
@@ -14,7 +16,6 @@ import com.lightbend.lagom.serialization.Jsonable;
 import akka.Done;
 
 import java.time.OffsetDateTime;
-import java.util.Optional;
 
 /**
  * This interface defines all the commands that the IncomeTax entity supports.
@@ -37,11 +38,23 @@ public interface IncomeTaxCommand extends Jsonable {
   final class Register implements IncomeTaxCommand, CompressedJsonable, PersistentEntity.ReplyType<Done> {
     public final @NonNull String contributorId;
     public final @NonNull OffsetDateTime registrationDate;
+    public final @NonNull Income previousYearlyIncome;
 
     @JsonCreator
-    public Register(@NonNull String contributorId, @NonNull OffsetDateTime registrationDate) {
+    public Register(@NonNull String contributorId, @NonNull OffsetDateTime registrationDate, Income previousYearlyIncome) {
       this.contributorId = Preconditions.checkNotNull(contributorId, "contributorId");
       this.registrationDate = Preconditions.checkNotNull(registrationDate, "registrationDate");
+      this.previousYearlyIncome = Preconditions.checkNotNull(previousYearlyIncome, "previousYearlyIncome");
+    }
+
+    Register(String contributorId, OffsetDateTime registrationDate, long previousYearlyIncome, IncomeType incomeType) {
+      this.contributorId = Preconditions.checkNotNull(contributorId, "name");
+      this.registrationDate = Preconditions.checkNotNull(registrationDate, "registrationDate");
+      Preconditions.checkNotNull(incomeType, "incomeType");
+      OffsetDateTime lastYear = registrationDate.minusYears(1);
+      OffsetDateTime lastYearStart = DateUtils.minFirstDayOfYear.apply(lastYear);
+      OffsetDateTime lastYearEnd = DateUtils.maxLastDayOfYear.apply(lastYear);
+      this.previousYearlyIncome = new Income(previousYearlyIncome, incomeType, lastYearStart, lastYearStart);
     }
   }
 

@@ -35,7 +35,7 @@ public final class IncomeAdjusters {
     };
   }
 
-  public static IncomeAdjuster month(Income income) {
+  public static IncomeAdjuster currentYear(Income income) {
     return (state) -> {
 
       PVector<Income> newIncomes = updateIncomes(state, income);
@@ -54,9 +54,11 @@ public final class IncomeAdjusters {
     Map<Integer, Income> monthlyIncomes = new HashMap<>(12);
 
     // populate with the known incomes
-    for (int month = 1; month <= 12; month++) {
-      if (state.currentIncomes.contains(month)) {
-        monthlyIncomes.put(month, state.currentIncomes.get(month));
+    if (!state.currentIncomes.isEmpty()) {
+      for (int month = 1; month <= 12; month++) {
+        if (state.currentIncomes.contains(month)) {
+          monthlyIncomes.put(month, state.currentIncomes.get(month));
+        }
       }
     }
 
@@ -70,7 +72,7 @@ public final class IncomeAdjusters {
 
     // populate with the new income
     Income incomeToTheEndOfYear = scaleToEndOfYear(income);
-    for (int month = income.start.getMonthValue(); month <= income.end.getMonthValue(); month++) {
+    for (int month = incomeToTheEndOfYear.start.getMonthValue(); month <= incomeToTheEndOfYear.end.getMonthValue(); month++) {
       monthlyIncomes.put(month, scaleToMonth(incomeToTheEndOfYear, Month.of(month)));
     }
 
@@ -110,7 +112,7 @@ public final class IncomeAdjusters {
       end = justBefore.apply(state.registeredDate);
     }
     Period period = Period.between(firstDayOfYear.toLocalDate(), end.toLocalDate());
-    BigDecimal incomeBeforeRegistration = BigDecimal.valueOf(lastYearIncome.income, 2)
+    BigDecimal incomeBeforeRegistration = BigDecimal.valueOf(lastYearIncome.income)
         .divide(BigDecimal.valueOf(12))
         .multiply(BigDecimal.valueOf(period.getMonths() + 1))
         .setScale(0, RoundingMode.DOWN);
@@ -134,7 +136,7 @@ public final class IncomeAdjusters {
     }
     Period newPeriod = Period.between(start.toLocalDate(), end.toLocalDate());
     BigDecimal yearlyIncome =
-        BigDecimal.valueOf(income.income, 2)
+        BigDecimal.valueOf(income.income)
             .divide(BigDecimal.valueOf(months))
             .multiply(BigDecimal.valueOf(newPeriod.getMonths() + 1)
                 .setScale(0, RoundingMode.DOWN));
@@ -148,7 +150,7 @@ public final class IncomeAdjusters {
 
   public static Income scaleToMonth(Income income, int year, Month month) {
     Period period = Period.between(income.start.toLocalDate(), income.end.toLocalDate());
-    BigDecimal scaledIncome = BigDecimal.valueOf(income.income, 2)
+    BigDecimal scaledIncome = BigDecimal.valueOf(income.income)
         .divide(BigDecimal.valueOf(period.getMonths() + 1))
         .setScale(0, RoundingMode.DOWN);
     LocalDate firstOfMonthDate = LocalDate.of(year, month, 1);

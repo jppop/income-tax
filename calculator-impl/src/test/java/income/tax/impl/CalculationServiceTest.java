@@ -3,6 +3,7 @@ package income.tax.impl;
 import akka.Done;
 import income.tax.api.CalculationService;
 import income.tax.api.Contributor;
+import income.tax.api.IncomeType;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -27,10 +28,11 @@ public class CalculationServiceTest {
           OffsetDateTime.of(
               LocalDate.of(2019, Month.APRIL, 12), LocalTime.NOON, OffsetDateTime.now().getOffset());
 
-      long incomeBeforeRegistration = (registrationDate.getMonthValue() - 1) * 2000;
+      long lastYerIncome = (registrationDate.getMonthValue() - 1) * 2000;
+      IncomeType incomeType = IncomeType.estimated;
 
       // Act
-      Done done = service.register().invoke(new Contributor("#contributorId", registrationDate, incomeBeforeRegistration)).toCompletableFuture().get(5, SECONDS);
+      Done done = service.register().invoke(new Contributor("#contributorId", registrationDate, lastYerIncome, incomeType)).toCompletableFuture().get(5, SECONDS);
 
       // Assert
       Assertions.assertThat(done).isNotNull();

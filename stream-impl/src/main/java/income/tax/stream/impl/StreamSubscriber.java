@@ -25,7 +25,9 @@ public class StreamSubscriber {
           if (event instanceof CalculationEvent.Registered) {
             CalculationEvent.Registered registeredEvent = (CalculationEvent.Registered) event;
             // Update the message
-            return repository.registerContributor(registeredEvent.getContributorId(), registeredEvent.getRegistrationDate());
+            return repository.registerContributor(
+                registeredEvent.getContributorId(), registeredEvent.getRegistrationDate(),
+                registeredEvent.previousIncome, registeredEvent.previousIncomeType);
 
           } else {
             // Ignore all other events

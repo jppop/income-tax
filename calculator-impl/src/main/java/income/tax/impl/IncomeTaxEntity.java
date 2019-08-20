@@ -3,15 +3,16 @@ package income.tax.impl;
 import akka.Done;
 import com.lightbend.lagom.javadsl.persistence.PersistentEntity;
 import income.tax.api.Income;
+import income.tax.impl.calculation.IncomeAdjuster;
 import income.tax.impl.calculation.IncomeAdjusters;
 import income.tax.impl.IncomeTaxCommand.ApplyIncome;
 import income.tax.impl.IncomeTaxCommand.Register;
 import income.tax.impl.IncomeTaxEvent.Registered;
+import income.tax.impl.message.Message;
 import income.tax.impl.tools.DateUtils;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.OffsetDateTime;
-import java.time.Period;
 import java.time.ZoneOffset;
 import java.util.Optional;
 
@@ -62,15 +63,25 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
       // In response to this command, we want to first persist it as a
       // Registered event
       log.debug("processing command {}", cmd);
-      return ctx.thenPersist(new IncomeTaxEvent.Registered(entityId(), cmd.registrationDate),
+      return ctx.thenPersist(new IncomeTaxEvent.Registered(entityId(), cmd.registrationDate, cmd.previousYearlyIncome),
           // Then once the event is successfully persisted, we respond with done.
           evt -> ctx.reply(Done.getInstance()));
     });
 
     b.setCommandHandler(IncomeTaxCommand.ApplyIncome.class, (cmd, ctx) -> {
       log.debug("processing command {}", cmd);
-      computeContributions(state(), cmd.income);
-      return ctx.thenPersist(new IncomeTaxEvent.IncomeApplied(entityId(), cmd.income, now()),
+      Optional<String> possibleError = checkIncomeCommandArguments(cmd.income);
+      if (possibleError.isPresent()) {
+        ctx.invalidCommand(possibleError.get());
+        return ctx.done();
+      }
+      IncomeTaxEvent incomeTaxEvent;
+      if (isAppliedInTheCurrentYear(cmd.income)) {
+        incomeTaxEvent = new IncomeTaxEvent.IncomeApplied(entityId(), cmd.income, now());
+      } else {
+        incomeTaxEvent = new IncomeTaxEvent.PreviousIncomeApplied(entityId(), cmd.income, now());
+      }
+      return ctx.thenPersist(incomeTaxEvent,
           // Then once the event is successfully persisted, we respond with done.
           evt -> ctx.reply(Done.getInstance()));
     });
@@ -79,17 +90,22 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
      */
     b.setEventHandler(IncomeTaxEvent.Registered.class,
         // Update the current state with the contributor id and the registered date
-        evt -> new IncomeTaxState(evt.contributorId, evt.registrationDate));
+        evt -> new IncomeTaxState(evt.contributorId, evt.registrationDate, evt.previousYearlyIncome));
 
+    /*
+    * Event handler for Income application events
+     */
     b.setEventHandler(IncomeTaxEvent.IncomeApplied.class,
-        evt -> state().applyIncome(evt.income));
+        evt -> state().with(incomeAdjuster(evt.income)));
+    b.setEventHandler(IncomeTaxEvent.PreviousIncomeApplied.class,
+        evt -> state().with(yearlyIncomeAdjuster(evt.income)));
     /*
      * We've defined all our behaviour, so build and return it.
      */
     return b.build();
   }
 
-  private IncomeTaxState computeContributions(IncomeTaxState incomeTaxState, Income income) {
+  private Optional<String> checkIncomeCommandArguments(Income income) {
 
     // adjust start to the 1st of month
     OffsetDateTime start = DateUtils.minFirstDayOfMonth.apply(income.start);
@@ -97,21 +113,24 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
     OffsetDateTime end = DateUtils.maxLastDayOfMonth.apply(income.end);
 
     if (start.isAfter(end)) {
-      throw new IllegalArgumentException("end must be after start");
+      return Optional.of(Message.E_ILLEGAL_PERIOD.get());
     }
     if (start.getYear() != end.getYear()) {
-      throw new IllegalArgumentException("must end in the same year");
+      return Optional.of(Message.E_NOT_SINGLE_YEAR_PERIOD.get());
     }
-    Period period = Period.between(start.toLocalDate(), end.toLocalDate());
-    int months = period.getMonths() + 1;
+    return Optional.empty();
+  }
 
-    boolean isPreviousYear = income.start.getYear() < incomeTaxState.contributionYear;
-    if (isPreviousYear) {
-      // yearly income declaration of a previous year
-      return incomeTaxState.with(IncomeAdjusters.previousYear(income));
-    } else {
-      return incomeTaxState.with(IncomeAdjusters.month(income));
-    }
+  private boolean isAppliedInTheCurrentYear(Income income) {
+    return income.start.getYear() == state().contributionYear;
+  }
+
+  private IncomeAdjuster incomeAdjuster(Income income) {
+    return IncomeAdjusters.currentYear(income);
+  }
+
+  private IncomeAdjuster yearlyIncomeAdjuster(Income income) {
+    return IncomeAdjusters.previousYear(income);
   }
 
   private OffsetDateTime now() {

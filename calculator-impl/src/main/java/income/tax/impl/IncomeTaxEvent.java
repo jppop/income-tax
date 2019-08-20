@@ -9,6 +9,8 @@ import com.lightbend.lagom.javadsl.persistence.AggregateEventTag;
 import com.lightbend.lagom.javadsl.persistence.AggregateEventTagger;
 import com.lightbend.lagom.serialization.Jsonable;
 import income.tax.api.Income;
+import income.tax.api.IncomeType;
+import income.tax.impl.tools.DateUtils;
 import lombok.Value;
 
 import java.time.OffsetDateTime;
@@ -35,15 +37,17 @@ public interface IncomeTaxEvent extends Jsonable, AggregateEvent<IncomeTaxEvent>
   @SuppressWarnings("serial")
   @Value
   @JsonDeserialize
-  public final class Registered implements IncomeTaxEvent {
+  final class Registered implements IncomeTaxEvent {
 
     public final String contributorId;
     public final OffsetDateTime registrationDate;
+    public final Income previousYearlyIncome;
 
     @JsonCreator
-    public Registered(String contributorId, OffsetDateTime registrationDate) {
+    public Registered(String contributorId, OffsetDateTime registrationDate, Income previousYearlyIncome) {
       this.contributorId = Preconditions.checkNotNull(contributorId, "name");
       this.registrationDate = Preconditions.checkNotNull(registrationDate, "registrationDate");
+      this.previousYearlyIncome = Preconditions.checkNotNull(previousYearlyIncome, "previousYearlyIncome");
     }
   }
 
@@ -55,6 +59,19 @@ public interface IncomeTaxEvent extends Jsonable, AggregateEvent<IncomeTaxEvent>
 
     @JsonCreator
     public IncomeApplied(String contributorId, Income income, OffsetDateTime createdAt) {
+      this.contributorId = Preconditions.checkNotNull(contributorId, "contributorId");
+      this.income =  Preconditions.checkNotNull(income, "income");
+      this.createdAt = Preconditions.checkNotNull(createdAt, "createdAt");
+    }
+  }
+
+  final class PreviousIncomeApplied implements IncomeTaxEvent {
+    public final String contributorId;
+    public final OffsetDateTime createdAt;
+    public final Income income;
+
+    @JsonCreator
+    public PreviousIncomeApplied(String contributorId, Income income, OffsetDateTime createdAt) {
       this.contributorId = Preconditions.checkNotNull(contributorId, "contributorId");
       this.income =  Preconditions.checkNotNull(income, "income");
       this.createdAt = Preconditions.checkNotNull(createdAt, "createdAt");

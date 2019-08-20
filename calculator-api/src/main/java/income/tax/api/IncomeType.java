@@ -3,7 +3,7 @@ package income.tax.api;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum IncomeType {
-  real("real"), estimated("estimated"), automatic("auto");
+  real("real"), estimated("estimated"), automatic("auto"), system("system");
 
   private final String name;
 

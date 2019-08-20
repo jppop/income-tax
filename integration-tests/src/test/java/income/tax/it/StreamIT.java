@@ -7,6 +7,8 @@ import akka.stream.Materializer;
 import com.lightbend.lagom.javadsl.client.integration.LagomClientFactory;
 import income.tax.api.CalculationService;
 import income.tax.api.Contributor;
+import income.tax.api.Income;
+import income.tax.api.IncomeType;
 import income.tax.stream.api.StreamService;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterAll;
@@ -15,6 +17,7 @@ import org.junit.jupiter.api.Test;
 
 import java.net.URI;
 import java.time.*;
+import java.time.temporal.TemporalAdjusters;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 
@@ -58,7 +61,15 @@ public class StreamIT {
             LocalTime.NOON,
             OffsetDateTime.now(ZoneOffset.UTC).getOffset());
 
-    Done answer = await(calculationService.register().invoke(new Contributor("#contributor", registrationDate, incomeBeforeRegistration)));
+    OffsetDateTime lastYear = registrationDate.minusYears(1);
+    OffsetDateTime lastYearStart = lastYear.with(TemporalAdjusters.firstDayOfYear());
+    OffsetDateTime lastYearEnd = lastYear.with(TemporalAdjusters.lastDayOfYear());
+    Income previousYearlyIncome = new Income(12 * 1000, IncomeType.estimated, lastYearStart, lastYearEnd);
+
+    Done answer = await(
+        calculationService.register().invoke(
+            new Contributor("#contributor", registrationDate,
+                previousYearlyIncome.income, previousYearlyIncome.incomeType)));
     Assertions.assertThat(answer).isEqualTo(Done.getInstance());
   }
 

@@ -4,8 +4,6 @@ import akka.Done;
 import akka.actor.ActorSystem;
 import akka.stream.ActorMaterializer;
 import akka.stream.Materializer;
-import akka.stream.javadsl.Sink;
-import akka.stream.javadsl.Source;
 import com.lightbend.lagom.javadsl.client.integration.LagomClientFactory;
 import income.tax.api.CalculationService;
 import income.tax.api.Contributor;
@@ -17,8 +15,6 @@ import org.junit.jupiter.api.Test;
 
 import java.net.URI;
 import java.time.*;
-import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 
@@ -62,7 +58,7 @@ public class StreamIT {
             LocalTime.NOON,
             OffsetDateTime.now(ZoneOffset.UTC).getOffset());
 
-    Done answer = await(calculationService.register().invoke(new Contributor("#contributor", registrationDate)));
+    Done answer = await(calculationService.register().invoke(new Contributor("#contributor", registrationDate, incomeBeforeRegistration)));
     Assertions.assertThat(answer).isEqualTo(Done.getInstance());
   }
 

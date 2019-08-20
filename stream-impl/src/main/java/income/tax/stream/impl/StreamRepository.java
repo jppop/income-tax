@@ -52,7 +52,7 @@ public class StreamRepository {
         row -> {
           Date date = row.getTimestamp("registrationDate");
           OffsetDateTime registrationDate = date.toInstant().atOffset(ZoneOffset.UTC);
-          return new Contributor(id, registrationDate);
+          return new Contributor(id, registrationDate, incomeBeforeRegistration);
         }));
   }
 }

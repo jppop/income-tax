@@ -2,11 +2,16 @@ package income.tax.impl;
 
 import akka.Done;
 import com.lightbend.lagom.javadsl.persistence.PersistentEntity;
-import income.tax.impl.IncomeTaxEvent.Registered;
-import income.tax.impl.IncomeTaxCommand.IncomeTax;
+import income.tax.api.Income;
+import income.tax.impl.calculation.IncomeAdjusters;
+import income.tax.impl.IncomeTaxCommand.ApplyIncome;
 import income.tax.impl.IncomeTaxCommand.Register;
+import income.tax.impl.IncomeTaxEvent.Registered;
+import income.tax.impl.tools.DateUtils;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.OffsetDateTime;
+import java.time.Period;
 import java.time.ZoneOffset;
 import java.util.Optional;
 
@@ -16,7 +21,7 @@ import java.util.Optional;
  * <p>
  * Event sourced entities are interacted with by sending them commands. This
  * entity supports two commands, a {@link Register} command, which is
- * used to change the greeting, and a {@link IncomeTax} command, which is a read
+ * used to change the greeting, and a {@link ApplyIncome} command, which is a read
  * only command which returns a greeting to the name specified by the command.
  * <p>
  * Commands get translated to events, and it's the events that get persisted by
@@ -29,6 +34,7 @@ import java.util.Optional;
  * This entity defines one event, the {@link Registered} event,
  * which is emitted when a {@link Register} command is received.
  */
+@Slf4j
 public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTaxEvent, IncomeTaxState> {
 
   /**
@@ -52,30 +58,21 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
     /*
      * Command handler for the Register command.
      */
-    b.setCommandHandler(Register.class, (cmd, ctx) ->
-        // In response to this command, we want to first persist it as a
-        // Registered event
-        ctx.thenPersist(new IncomeTaxEvent.Registered(entityId(), cmd.registrationDate),
-            // Then once the event is successfully persisted, we respond with done.
-            evt -> ctx.reply(Done.getInstance())));
+    b.setCommandHandler(Register.class, (cmd, ctx) -> {
+      // In response to this command, we want to first persist it as a
+      // Registered event
+      log.debug("processing command {}", cmd);
+      return ctx.thenPersist(new IncomeTaxEvent.Registered(entityId(), cmd.registrationDate),
+          // Then once the event is successfully persisted, we respond with done.
+          evt -> ctx.reply(Done.getInstance()));
+    });
 
     b.setCommandHandler(IncomeTaxCommand.ApplyIncome.class, (cmd, ctx) -> {
-      switch (cmd.income.incomeType) {
-        case PreviousYearlyIncome:
-          if (!cmd.income.year.isPresent()) {
-            ctx.commandFailed(new IllegalArgumentException("Year is mandatory"));
-            return ctx.done();
-          }
-        case MonthlyIncome:
-          if (!cmd.income.month.isPresent()) {
-            ctx.commandFailed(new IllegalArgumentException("Month is mandatory"));
-            return ctx.done();
-          }
-          ctx.thenPersist(new IncomeTaxEvent.IncomeApplied(entityId(), cmd.income, now()),
-              // Then once the event is successfully persisted, we respond with done.
-              evt -> ctx.reply(Done.getInstance())));
-
-      }
+      log.debug("processing command {}", cmd);
+      computeContributions(state(), cmd.income);
+      return ctx.thenPersist(new IncomeTaxEvent.IncomeApplied(entityId(), cmd.income, now()),
+          // Then once the event is successfully persisted, we respond with done.
+          evt -> ctx.reply(Done.getInstance()));
     });
     /*
      * Event handler for the Registered event.
@@ -85,11 +82,36 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
         evt -> new IncomeTaxState(evt.contributorId, evt.registrationDate));
 
     b.setEventHandler(IncomeTaxEvent.IncomeApplied.class,
-        evt -> state().applyPreviousIncome(evt.income));
+        evt -> state().applyIncome(evt.income));
     /*
      * We've defined all our behaviour, so build and return it.
      */
     return b.build();
+  }
+
+  private IncomeTaxState computeContributions(IncomeTaxState incomeTaxState, Income income) {
+
+    // adjust start to the 1st of month
+    OffsetDateTime start = DateUtils.minFirstDayOfMonth.apply(income.start);
+    // adjust end to the last day of month
+    OffsetDateTime end = DateUtils.maxLastDayOfMonth.apply(income.end);
+
+    if (start.isAfter(end)) {
+      throw new IllegalArgumentException("end must be after start");
+    }
+    if (start.getYear() != end.getYear()) {
+      throw new IllegalArgumentException("must end in the same year");
+    }
+    Period period = Period.between(start.toLocalDate(), end.toLocalDate());
+    int months = period.getMonths() + 1;
+
+    boolean isPreviousYear = income.start.getYear() < incomeTaxState.contributionYear;
+    if (isPreviousYear) {
+      // yearly income declaration of a previous year
+      return incomeTaxState.with(IncomeAdjusters.previousYear(income));
+    } else {
+      return incomeTaxState.with(IncomeAdjusters.month(income));
+    }
   }
 
   private OffsetDateTime now() {

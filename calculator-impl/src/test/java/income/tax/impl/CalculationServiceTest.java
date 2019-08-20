@@ -20,13 +20,19 @@ public class CalculationServiceTest {
   @Test
   public void shouldRegisterContributor() throws Exception {
     withServer(defaultSetup().withCassandra(), server -> {
+      // Arrange
       CalculationService service = server.client(CalculationService.class);
 
       OffsetDateTime registrationDate =
           OffsetDateTime.of(
-              LocalDate.of(2019, Month.APRIL, 4), LocalTime.NOON, OffsetDateTime.now().getOffset());
+              LocalDate.of(2019, Month.APRIL, 12), LocalTime.NOON, OffsetDateTime.now().getOffset());
 
-      Done done = service.register().invoke(new Contributor("#contributorId", registrationDate)).toCompletableFuture().get(5, SECONDS);
+      long incomeBeforeRegistration = (registrationDate.getMonthValue() - 1) * 2000;
+
+      // Act
+      Done done = service.register().invoke(new Contributor("#contributorId", registrationDate, incomeBeforeRegistration)).toCompletableFuture().get(5, SECONDS);
+
+      // Assert
       Assertions.assertThat(done).isNotNull();
     });
   }

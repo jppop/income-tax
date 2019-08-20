@@ -2,7 +2,7 @@ package income.tax.impl.calculation;
 
 import income.tax.api.Income;
 import income.tax.api.IncomeType;
-import income.tax.impl.IncomeTaxState;
+import org.pcollections.HashTreePMap;
 import org.pcollections.PMap;
 import org.pcollections.PVector;
 import org.pcollections.TreePVector;
@@ -23,47 +23,59 @@ public final class IncomeAdjusters {
   public static IncomeAdjuster previousYear(Income income) {
     return (state) -> {
 
-      // FIXME: updateIncome should use a copy of state.yearlyPreviousIncomes (given as an argument)
-      // so, we can avoid creating a new state
-      IncomeTaxState newState = new IncomeTaxState(state.contributorId, state.registeredDate,
-          state.yearlyPreviousIncomes.plus(income.start.getYear(), scaleToFullYear(income)),
-          state.contributionYear, state.currentIncomes, state.contributions);
-      PMap<ContributionType, Contribution> newContributions = newContributions(state, state.currentIncomes);
-      return new IncomeTaxState(state.contributorId, state.registeredDate,
-          newState.yearlyPreviousIncomes,
-          state.contributionYear, state.currentIncomes, newContributions);
+      // Apply new previous income
+      PMap<Integer, Income> newPreviousYearlyIncome =
+          state.previousYearlyIncomes.plus(income.start.getYear(), scaleToFullYear(income));
+      // calculate new current year incomes
+      PVector<Income> newIncomes =
+          calculateIncomes(income, state.registeredDate, state.previousYearlyIncomes, state.currentIncomes);
+      // calculate contributions
+      PMap<ContributionType, Contribution> newContributions = calculateContributions(state.currentIncomes);
+      return state.modifier()
+          .withNewPreviousYearlyIncome(newPreviousYearlyIncome)
+          .withNewCurrentIncomes(newIncomes)
+          .withNewContributions(newContributions)
+          .modify();
     };
   }
 
   public static IncomeAdjuster currentYear(Income income) {
     return (state) -> {
 
-      PVector<Income> newIncomes = updateIncomes(state, income);
-      PMap<ContributionType, Contribution> newContributions = newContributions(state, newIncomes);
-      return new IncomeTaxState(state.contributorId, state.registeredDate,
-          state.yearlyPreviousIncomes.plus(income.start.getYear(), income),
-          state.contributionYear, newIncomes, newContributions);
+      // calculate new current year incomes
+      PVector<Income> newIncomes =
+          calculateIncomes(income, state.registeredDate, state.previousYearlyIncomes, state.currentIncomes);
+      // calculate contributions
+      PMap<ContributionType, Contribution> newContributions = calculateContributions(newIncomes);
+      return state.modifier()
+          .withNewCurrentIncomes(newIncomes)
+          .withNewContributions(newContributions)
+          .modify();
     };
   }
 
-  private static PMap<ContributionType, Contribution> newContributions(IncomeTaxState state, PVector<Income> newIncomes) {
-    return state.contributions;
+  private static PMap<ContributionType, Contribution> calculateContributions(PVector<Income> newIncomes) {
+    return HashTreePMap.empty();
   }
 
-  private static PVector<Income> updateIncomes(IncomeTaxState state, Income income) {
+  private static PVector<Income> calculateIncomes(
+      Income income,
+      OffsetDateTime registeredDate, PMap<Integer, Income> yearlyPreviousIncomes,
+      PVector<Income> currentIncomes) {
+
     Map<Integer, Income> monthlyIncomes = new HashMap<>(12);
 
     // populate with the known incomes
-    if (!state.currentIncomes.isEmpty()) {
+    if (!currentIncomes.isEmpty()) {
       for (int month = 1; month <= 12; month++) {
-        if (state.currentIncomes.contains(month)) {
-          monthlyIncomes.put(month, state.currentIncomes.get(month));
+        if (currentIncomes.contains(month)) {
+          monthlyIncomes.put(month, currentIncomes.get(month));
         }
       }
     }
 
     // populates monthly income with incomes before registration
-    Income incomeBeforeRegistration = beforeRegistration(state, income);
+    Income incomeBeforeRegistration = beforeRegistration(income, registeredDate, yearlyPreviousIncomes);
     if (incomeBeforeRegistration.start.getYear() == income.start.getYear()) {
       for (int month = 1; month <= incomeBeforeRegistration.end.getMonthValue(); month++) {
         monthlyIncomes.put(month, scaleToMonth(incomeBeforeRegistration, Month.of(month)));
@@ -79,9 +91,9 @@ public final class IncomeAdjusters {
     // then verify there no missing month
     if (!monthlyIncomes.containsKey(1)) {
       int lastYear = income.start.getYear() - 1;
-      if (state.yearlyPreviousIncomes.containsKey(lastYear)) {
+      if (yearlyPreviousIncomes.containsKey(lastYear)) {
         monthlyIncomes.put(1,
-            scaleToMonth(state.yearlyPreviousIncomes.get(lastYear), income.start.getYear(), Month.JANUARY));
+            scaleToMonth(yearlyPreviousIncomes.get(lastYear), income.start.getYear(), Month.JANUARY));
       }
     }
     // if any month is missing, use the previous one
@@ -95,21 +107,25 @@ public final class IncomeAdjusters {
     return TreePVector.from(new ArrayList(monthlyIncomes.values()));
   }
 
-  private static Income beforeRegistration(IncomeTaxState state, Income income) {
+  private static Income beforeRegistration(
+      Income income,
+      OffsetDateTime registeredDate,
+      PMap<Integer, Income> yearlyPreviousIncomes) {
+
     OffsetDateTime firstDayOfYear = income.start.withDayOfYear(1);
-    if (state.registeredDate.isBefore(firstDayOfYear)) {
+    if (registeredDate.isBefore(firstDayOfYear)) {
       return new Income(0, IncomeType.automatic, firstDayOfYear.minusYears(1), justBefore.apply(firstDayOfYear));
     }
-    int lastYear = state.registeredDate.getYear() - 1;
-    if (!state.yearlyPreviousIncomes.containsKey(lastYear)) {
+    int lastYear = registeredDate.getYear() - 1;
+    if (!yearlyPreviousIncomes.containsKey(lastYear)) {
       return new Income(0, IncomeType.automatic, firstDayOfYear.minusYears(1), justBefore.apply(firstDayOfYear));
     }
-    Income lastYearIncome = state.yearlyPreviousIncomes.get(lastYear);
+    Income lastYearIncome = yearlyPreviousIncomes.get(lastYear);
     OffsetDateTime end;
-    if (income.start.isBefore(state.registeredDate)) {
+    if (income.start.isBefore(registeredDate)) {
       end = justBefore.apply(income.start);
     } else {
-      end = justBefore.apply(state.registeredDate);
+      end = justBefore.apply(registeredDate);
     }
     Period period = Period.between(firstDayOfYear.toLocalDate(), end.toLocalDate());
     BigDecimal incomeBeforeRegistration = BigDecimal.valueOf(lastYearIncome.income)

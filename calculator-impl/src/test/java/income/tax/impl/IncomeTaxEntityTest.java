@@ -69,7 +69,7 @@ public class IncomeTaxEntityTest {
     assertThat(outcome.events().get(0)).isEqualTo(new IncomeTaxEvent.Registered(entityId, registrationDate, previousYearlyIncome));
     assertThat(outcome.state().contributorId).isEqualTo(entityId);
     assertThat(outcome.state().registeredDate).isEqualTo(registrationDate);
-    assertThat(outcome.state().yearlyPreviousIncomes)
+    assertThat(outcome.state().previousYearlyIncomes)
         .isNotEmpty()
         .contains(entry(lastYear.getYear(), previousYearlyIncome));
   }

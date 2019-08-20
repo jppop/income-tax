@@ -32,7 +32,7 @@ public final class IncomeTaxState implements CompressedJsonable {
   OffsetDateTime registeredDate;
 
   public final @NonNull
-  PMap<Integer, Income> yearlyPreviousIncomes;
+  PMap<Integer, Income> previousYearlyIncomes;
 
   public final int contributionYear;
 
@@ -45,29 +45,65 @@ public final class IncomeTaxState implements CompressedJsonable {
   @JsonCreator
   public IncomeTaxState(
       @NonNull String contributorId, @NonNull OffsetDateTime registeredDate,
-      @NonNull PMap<Integer, Income> yearlyPreviousIncomes,
+      @NonNull PMap<Integer, Income> previousYearlyIncomes,
       int contributionYear, PVector<Income> currentIncomes,
       @NonNull PMap<ContributionType, Contribution> contributions) {
     this.contributorId = Preconditions.checkNotNull(contributorId, "message");
     this.registeredDate = Preconditions.checkNotNull(registeredDate, "registeredDate");
-    this.yearlyPreviousIncomes = Preconditions.checkNotNull(yearlyPreviousIncomes, "yearlyPreviousIncomes");
+    this.previousYearlyIncomes = Preconditions.checkNotNull(previousYearlyIncomes, "yearlyPreviousIncomes");
     this.contributionYear = contributionYear;
     this.currentIncomes = Preconditions.checkNotNull(currentIncomes, "currentIncomes");
     this.contributions = Preconditions.checkNotNull(contributions, "contributions");
   }
 
-  IncomeTaxState(@NonNull String contributorId, @NonNull OffsetDateTime registeredDate, Income previousYearlyIncome) {
+  IncomeTaxState(@NonNull String contributorId, @NonNull OffsetDateTime registeredDate, Income previousYearlyIncomes) {
     this(contributorId, registeredDate,
-        IntTreePMap.singleton(previousYearlyIncome.start.getYear(), previousYearlyIncome),
+        IntTreePMap.singleton(previousYearlyIncomes.start.getYear(), previousYearlyIncomes),
         registeredDate.getYear(), TreePVector.empty(), HashTreePMap.empty());
-  }
-
-  IncomeTaxState applyIncome(Income income) {
-    return this;
   }
 
   IncomeTaxState with(IncomeAdjuster adjuster) {
     return adjuster.adjust(this);
+  }
+
+  public Modifier modifier() {
+    return new Modifier(this);
+  }
+
+  public static class Modifier {
+    private final IncomeTaxState currentState;
+    private PMap<Integer, Income> previousYearlyIncomes;
+    private PVector<Income> currentIncomes;
+    private PMap<ContributionType, Contribution> contributions;
+
+    public Modifier(IncomeTaxState currentState) {
+      this.currentState = currentState;
+      this.previousYearlyIncomes = currentState.previousYearlyIncomes;
+      this.currentIncomes = currentState.currentIncomes;
+      this.contributions = currentState.contributions;
+    }
+
+    public Modifier withNewPreviousYearlyIncome(PMap<Integer, Income> newPreviousYearlyIncome) {
+      this.previousYearlyIncomes = newPreviousYearlyIncome;
+      return this;
+    }
+
+    public Modifier withNewCurrentIncomes(PVector<Income> newCurrentIncomes) {
+      this.currentIncomes = newCurrentIncomes;
+      return this;
+    }
+
+    public Modifier withNewContributions(PMap<ContributionType, Contribution> newContributions) {
+      this.contributions = newContributions;
+      return this;
+    }
+
+    public IncomeTaxState modify() {
+      return new IncomeTaxState(
+          currentState.contributorId, currentState.registeredDate,
+          this.previousYearlyIncomes,
+          currentState.contributionYear, this.currentIncomes, this.contributions);
+    }
   }
 
 }

@@ -1,4 +1,4 @@
-package income.tax.impl;
+package income.tax.impl.domain;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -7,7 +7,6 @@ import com.lightbend.lagom.serialization.CompressedJsonable;
 import income.tax.api.Income;
 import income.tax.impl.calculation.Contribution;
 import income.tax.impl.calculation.ContributionType;
-import income.tax.impl.calculation.IncomeAdjuster;
 import lombok.NonNull;
 import lombok.Value;
 import org.pcollections.*;

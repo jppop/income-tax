@@ -1,13 +1,11 @@
-package income.tax.impl;
+package income.tax.impl.domain;
 
 import akka.Done;
 import com.lightbend.lagom.javadsl.persistence.PersistentEntity;
 import income.tax.api.Income;
-import income.tax.impl.calculation.IncomeAdjuster;
-import income.tax.impl.calculation.IncomeAdjusters;
-import income.tax.impl.IncomeTaxCommand.ApplyIncome;
-import income.tax.impl.IncomeTaxCommand.Register;
-import income.tax.impl.IncomeTaxEvent.Registered;
+import income.tax.impl.domain.IncomeTaxCommand.ApplyIncome;
+import income.tax.impl.domain.IncomeTaxCommand.Register;
+import income.tax.impl.domain.IncomeTaxEvent.Registered;
 import income.tax.impl.message.Message;
 import income.tax.impl.tools.DateUtils;
 import lombok.extern.slf4j.Slf4j;

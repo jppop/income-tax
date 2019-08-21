@@ -1,4 +1,4 @@
-package income.tax.impl;
+package income.tax.impl.domain;
 
 import income.tax.api.Income;
 import income.tax.api.IncomeType;
@@ -47,7 +47,7 @@ public interface IncomeTaxCommand extends Jsonable {
       this.previousYearlyIncome = Preconditions.checkNotNull(previousYearlyIncome, "previousYearlyIncome");
     }
 
-    Register(String contributorId, OffsetDateTime registrationDate, long previousYearlyIncome, IncomeType incomeType) {
+    public Register(String contributorId, OffsetDateTime registrationDate, long previousYearlyIncome, IncomeType incomeType) {
       this.contributorId = Preconditions.checkNotNull(contributorId, "name");
       this.registrationDate = Preconditions.checkNotNull(registrationDate, "registrationDate");
       Preconditions.checkNotNull(incomeType, "incomeType");

@@ -1,4 +1,4 @@
-package income.tax.impl;
+package income.tax.impl.domain;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -9,8 +9,6 @@ import com.lightbend.lagom.javadsl.persistence.AggregateEventTag;
 import com.lightbend.lagom.javadsl.persistence.AggregateEventTagger;
 import com.lightbend.lagom.serialization.Jsonable;
 import income.tax.api.Income;
-import income.tax.api.IncomeType;
-import income.tax.impl.tools.DateUtils;
 import lombok.Value;
 
 import java.time.OffsetDateTime;

@@ -1,7 +1,9 @@
-package income.tax.impl.calculation;
+package income.tax.impl.domain;
 
 import income.tax.api.Income;
 import income.tax.api.IncomeType;
+import income.tax.impl.calculation.Contribution;
+import income.tax.impl.calculation.ContributionType;
 import org.pcollections.HashTreePMap;
 import org.pcollections.PMap;
 import org.pcollections.PVector;
@@ -28,9 +30,9 @@ public final class IncomeAdjusters {
           state.previousYearlyIncomes.plus(income.start.getYear(), scaleToFullYear(income));
       // calculate new current year incomes
       PVector<Income> newIncomes =
-          calculateIncomes(income, state.registeredDate, state.previousYearlyIncomes, state.currentIncomes);
+          calculateIncomes(income, state.registeredDate, newPreviousYearlyIncome, state.currentIncomes);
       // calculate contributions
-      PMap<ContributionType, Contribution> newContributions = calculateContributions(state.currentIncomes);
+      PMap<ContributionType, Contribution> newContributions = calculateContributions(newIncomes);
       return state.modifier()
           .withNewPreviousYearlyIncome(newPreviousYearlyIncome)
           .withNewCurrentIncomes(newIncomes)

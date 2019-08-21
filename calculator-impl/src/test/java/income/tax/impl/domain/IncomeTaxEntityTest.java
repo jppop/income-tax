@@ -1,4 +1,4 @@
-package income.tax.impl;
+package income.tax.impl.domain;
 
 import akka.actor.ActorSystem;
 import akka.testkit.javadsl.TestKit;
@@ -15,12 +15,12 @@ import static income.tax.impl.tools.DateUtils.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
-public class IncomeTaxEntityTest {
+class IncomeTaxEntityTest {
 
-  public static final String ENTITY_ID = "#ContributorId";
-  static ActorSystem system;
+  private static final String ENTITY_ID = "#ContributorId";
+  private static ActorSystem system;
 
-  PersistentEntityTestDriver<IncomeTaxCommand, IncomeTaxEvent, IncomeTaxState> driver;
+  private PersistentEntityTestDriver<IncomeTaxCommand, IncomeTaxEvent, IncomeTaxState> driver;
 
   @BeforeAll
   public static void setup() {
@@ -92,6 +92,7 @@ public class IncomeTaxEntityTest {
     Income previousYearlyIncome = new Income(12 * 1000, IncomeType.estimated, lastYearStart, lastYearEnd);
     Outcome<IncomeTaxEvent, IncomeTaxState> initialIncome =
         driver.run(new IncomeTaxCommand.Register(entityId, registrationDate, previousYearlyIncome));
+    assertThat(driver.getAllIssues()).isEmpty();
 
     // Act
     OffsetDateTime month =

@@ -11,6 +11,9 @@ import income.tax.api.CalculationEvent;
 import income.tax.api.CalculationService;
 import income.tax.api.Contributor;
 import income.tax.api.Income;
+import income.tax.impl.domain.IncomeTaxCommand;
+import income.tax.impl.domain.IncomeTaxEntity;
+import income.tax.impl.domain.IncomeTaxEvent;
 
 import javax.inject.Inject;
 

@@ -1,6 +1,4 @@
-package income.tax.impl.calculation;
-
-import income.tax.impl.IncomeTaxState;
+package income.tax.impl.domain;
 
 @FunctionalInterface
 public interface IncomeAdjuster {

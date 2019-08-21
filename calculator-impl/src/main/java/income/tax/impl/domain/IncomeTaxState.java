@@ -9,7 +9,9 @@ import income.tax.impl.calculation.Contribution;
 import income.tax.impl.calculation.ContributionType;
 import lombok.NonNull;
 import lombok.Value;
-import org.pcollections.*;
+import org.pcollections.HashTreePMap;
+import org.pcollections.IntTreePMap;
+import org.pcollections.PMap;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -36,7 +38,7 @@ public final class IncomeTaxState implements CompressedJsonable {
   public final int contributionYear;
 
   public final @NonNull
-  PVector<Income> currentIncomes;
+  PMap<Integer, Income> currentIncomes;
 
   public final @NonNull
   PMap<ContributionType, Contribution> contributions;
@@ -45,7 +47,7 @@ public final class IncomeTaxState implements CompressedJsonable {
   public IncomeTaxState(
       @NonNull String contributorId, @NonNull OffsetDateTime registeredDate,
       @NonNull PMap<Integer, Income> previousYearlyIncomes,
-      int contributionYear, PVector<Income> currentIncomes,
+      int contributionYear, PMap<Integer, Income> currentIncomes,
       @NonNull PMap<ContributionType, Contribution> contributions) {
     this.contributorId = Preconditions.checkNotNull(contributorId, "message");
     this.registeredDate = Preconditions.checkNotNull(registeredDate, "registeredDate");
@@ -55,10 +57,17 @@ public final class IncomeTaxState implements CompressedJsonable {
     this.contributions = Preconditions.checkNotNull(contributions, "contributions");
   }
 
-  IncomeTaxState(@NonNull String contributorId, @NonNull OffsetDateTime registeredDate, Income previousYearlyIncomes) {
+  private IncomeTaxState(String contributorId, OffsetDateTime registeredDate, Income previousYearlyIncomes) {
     this(contributorId, registeredDate,
-        IntTreePMap.singleton(previousYearlyIncomes.start.getYear(), previousYearlyIncomes),
-        registeredDate.getYear(), TreePVector.empty(), HashTreePMap.empty());
+        IntTreePMap.singleton(registeredDate.getYear() - 1, previousYearlyIncomes),
+        registeredDate.getYear(), IntTreePMap.empty(), HashTreePMap.empty());
+  }
+
+  static IncomeTaxState of(String contributorId, OffsetDateTime registeredDate, Income previousYearlyIncomes) {
+    IncomeTaxState incomeTaxState =
+        new IncomeTaxState(contributorId, registeredDate, previousYearlyIncomes)
+            .with(IncomeAdjusters.newYear(previousYearlyIncomes));
+    return incomeTaxState;
   }
 
   IncomeTaxState with(IncomeAdjuster adjuster) {
@@ -72,7 +81,7 @@ public final class IncomeTaxState implements CompressedJsonable {
   public static class Modifier {
     private final IncomeTaxState currentState;
     private PMap<Integer, Income> previousYearlyIncomes;
-    private PVector<Income> currentIncomes;
+    private PMap<Integer, Income> currentIncomes;
     private PMap<ContributionType, Contribution> contributions;
 
     public Modifier(IncomeTaxState currentState) {
@@ -87,7 +96,7 @@ public final class IncomeTaxState implements CompressedJsonable {
       return this;
     }
 
-    public Modifier withNewCurrentIncomes(PVector<Income> newCurrentIncomes) {
+    public Modifier withNewCurrentIncomes(PMap<Integer, Income> newCurrentIncomes) {
       this.currentIncomes = newCurrentIncomes;
       return this;
     }

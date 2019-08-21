@@ -6,10 +6,16 @@ import com.lightbend.lagom.javadsl.testkit.PersistentEntityTestDriver;
 import com.lightbend.lagom.javadsl.testkit.PersistentEntityTestDriver.Outcome;
 import income.tax.api.Income;
 import income.tax.api.IncomeType;
+import income.tax.impl.tools.IncomeUtils;
 import org.junit.jupiter.api.*;
-import org.pcollections.PVector;
+import org.pcollections.HashTreePMap;
+import org.pcollections.PMap;
 
 import java.time.*;
+import java.time.temporal.TemporalAdjusters;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
 import static income.tax.impl.tools.DateUtils.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -75,9 +81,9 @@ class IncomeTaxEntityTest {
   }
 
   @Test
-  public void applyIncome() {
+  public void applyMonthlyIncome() {
     // Arrange
-    final String entityId = ENTITY_ID;
+    final String contributorId = ENTITY_ID;
 
     OffsetDateTime registrationDate =
         OffsetDateTime.of(
@@ -90,9 +96,8 @@ class IncomeTaxEntityTest {
     OffsetDateTime lastYearStart = minFirstDayOfYear.apply(lastYear);
     OffsetDateTime lastYearEnd = maxLastDayOfYear.apply(lastYear);
     Income previousYearlyIncome = new Income(12 * 1000, IncomeType.estimated, lastYearStart, lastYearEnd);
-    Outcome<IncomeTaxEvent, IncomeTaxState> initialIncome =
-        driver.run(new IncomeTaxCommand.Register(entityId, registrationDate, previousYearlyIncome));
-    assertThat(driver.getAllIssues()).isEmpty();
+    IncomeTaxState incomeTaxState = IncomeTaxState.of(contributorId, registrationDate, previousYearlyIncome);
+    driver.initialize(Optional.of(incomeTaxState));
 
     // Act
     OffsetDateTime month =
@@ -102,32 +107,106 @@ class IncomeTaxEntityTest {
             LocalTime.NOON,
             OffsetDateTime.now(ZoneOffset.UTC).getOffset());
     Income monthlyIncome =
-        new Income(1500, IncomeType.estimated, minFirstDayOfMonth.apply(month), maxLastDayOfMonth.apply(month));
+        new Income(1500, IncomeType.estimated,
+                minFirstDayOfMonth.apply(month), maxLastDayOfMonth.apply(month));
+    Income incomeToTheEndOfYear = IncomeUtils.scaleToEndOfYear(monthlyIncome);
 
     Outcome<IncomeTaxEvent, IncomeTaxState> outcome =
-        driver.run(new IncomeTaxCommand.ApplyIncome(entityId, monthlyIncome));
+        driver.run(new IncomeTaxCommand.ApplyIncome(contributorId, incomeToTheEndOfYear));
 
     // Assert
     assertThat(outcome.events()).hasSize(1);
     assertThat(outcome.events().get(0)).isInstanceOf(IncomeTaxEvent.IncomeApplied.class);
-    assertThat(outcome.state().contributorId).isEqualTo(entityId);
+    assertThat(outcome.state().contributorId).isEqualTo(contributorId);
     assertThat(outcome.state().currentIncomes)
         .hasSize(12)
-        .contains(monthlyIncome);
+        .contains(entry(monthlyIncome.start.getMonthValue(), monthlyIncome));
 
-    PVector<Income> currentIncomes = outcome.state().currentIncomes;
-    long yearlyIncome = currentIncomes.stream().mapToLong(Income::getIncome).sum();
+    PMap<Integer, Income> currentIncomes = outcome.state().currentIncomes;
+    long yearlyIncome = currentIncomes.values().stream().mapToLong(Income::getIncome).sum();
     long expectedYearlyIncome =
         (registrationDate.getMonthValue() - 1) * (previousYearlyIncome.income / 12)
         + (12 - registrationDate.getMonthValue() + 1) * monthlyIncome.income;
     assertThat(yearlyIncome).isEqualTo(expectedYearlyIncome);
 
     long incomeBeforeRegistration =
-        currentIncomes.stream()
+        currentIncomes.values().stream()
             .filter(income -> income.end.isBefore(registrationDate)).mapToLong(Income::getIncome).sum();
     long expectedIncomeBeforeRegistration =
         (registrationDate.getMonthValue() - 1) * (previousYearlyIncome.income / 12);
     assertThat(incomeBeforeRegistration).isEqualTo(expectedIncomeBeforeRegistration);
   }
+
+  @Test
+  public void applyQuarterIncome() {
+    // Arrange
+    final String contributorId = ENTITY_ID;
+
+    OffsetDateTime registrationDate =
+        OffsetDateTime.of(
+            LocalDate.of(
+                2019, Month.APRIL, 12),
+            LocalTime.NOON,
+            OffsetDateTime.now(ZoneOffset.UTC).getOffset());
+
+    OffsetDateTime lastYear = registrationDate.minusYears(1);
+    OffsetDateTime lastYearStart = minFirstDayOfYear.apply(lastYear);
+    OffsetDateTime lastYearEnd = maxLastDayOfYear.apply(lastYear);
+    Income previousYearlyIncome = new Income(12 * 1000, IncomeType.estimated, lastYearStart, lastYearEnd);
+    Map<Integer, Income> currentIncomes = yearlyIncome(2019, 1000, 1000, 1000, 1210, 1220, 1230, 1310, 1320, 1330, 1410, 1420, 1430);
+    IncomeTaxState incomeTaxState =
+        IncomeTaxState.of(contributorId, registrationDate, previousYearlyIncome).modifier()
+        .withNewCurrentIncomes(HashTreePMap.from(currentIncomes))
+        .modify();
+    driver.initialize(Optional.of(incomeTaxState));
+
+    // Act
+    LocalDate start = LocalDate.of(2019, Month.JULY, 1);
+    LocalDate end = start.plusMonths(2);
+    Income quarterIncome =
+        new Income(2000 + (1310 + 1320 + 1330), IncomeType.estimated,
+            minFirstDayOfMonthFromDate.apply(start), maxLastDayOfMonthFromDate.apply(end));
+
+    Outcome<IncomeTaxEvent, IncomeTaxState> outcome =
+        driver.run(new IncomeTaxCommand.ApplyIncome(contributorId, quarterIncome));
+
+    // Assert
+    assertThat(outcome.events()).hasSize(1);
+    assertThat(outcome.events().get(0)).isInstanceOf(IncomeTaxEvent.IncomeApplied.class);
+    assertThat(outcome.state().contributorId).isEqualTo(contributorId);
+    assertThat(outcome.state().currentIncomes)
+        .hasSize(12);
+    long spreadOutValue = quarterIncome.income / 3;
+    long remainder = quarterIncome.income % 3;
+    assertThat(outcome.state().currentIncomes.get(quarterIncome.start.getMonthValue()))
+        .hasFieldOrPropertyWithValue("income", spreadOutValue);
+    assertThat(outcome.state().currentIncomes.get(quarterIncome.start.getMonthValue() + 1))
+        .hasFieldOrPropertyWithValue("income", spreadOutValue);
+    assertThat(outcome.state().currentIncomes.get(quarterIncome.start.getMonthValue() + 2))
+        .hasFieldOrPropertyWithValue("income", spreadOutValue + remainder);
+
+    PMap<Integer, Income> newCurrentIncomes = outcome.state().currentIncomes;
+    long yearlyIncome = newCurrentIncomes.values().stream().mapToLong(Income::getIncome).sum();
+    long expectedYearlyIncome =
+        2000 + currentIncomes.values().stream().mapToLong(Income::getIncome).sum();
+    assertThat(yearlyIncome).isEqualTo(expectedYearlyIncome);
+
+  }
+
+  private Map<Integer, Income> yearlyIncome(int year, long... amounts) {
+    assertThat(amounts).hasSize(12);
+    Map<Integer, Income> yearlyIncomes = new HashMap<>(12);
+    int month = 0;
+    for (long monthlyIncome: amounts) {
+      month++;
+      LocalDate monthDate = LocalDate.of(year, month, 1);
+      OffsetDateTime monthTime = OffsetDateTime.of(monthDate, LocalTime.MIN, ZoneOffset.UTC);
+      Income income =
+          new Income(monthlyIncome, IncomeType.estimated, monthTime, monthTime.with(TemporalAdjusters.lastDayOfMonth()));
+      yearlyIncomes.put(month, income);
+    }
+    return yearlyIncomes;
+  }
+
 
 }

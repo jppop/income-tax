@@ -5,8 +5,8 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.google.common.base.Preconditions;
 import lombok.Value;
 
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
+import java.time.*;
+import java.time.temporal.TemporalAdjusters;
 
 @Value
 @JsonDeserialize
@@ -28,9 +28,17 @@ public class Income {
     this.end = Preconditions.checkNotNull(end, "end");
   }
 
-  public Income withAdjustedDates(OffsetDateTime start, OffsetDateTime end) {
-    Preconditions.checkNotNull(start, "start");
-    Preconditions.checkNotNull(end, "end");
-    return new Income(this.income, this.incomeType, start, end);
+  public static Income zero(int year, Month month) {
+    OffsetDateTime monthStart =
+        OffsetDateTime.of(
+            LocalDate.of(year, month, 1),
+            LocalTime.MIN,
+            OffsetDateTime.now(ZoneOffset.UTC).getOffset());
+    OffsetDateTime monthEnd =
+        OffsetDateTime.of(
+            LocalDate.of(year, month, 1).with(TemporalAdjusters.lastDayOfMonth()),
+            LocalTime.MAX,
+            OffsetDateTime.now(ZoneOffset.UTC).getOffset());
+    return new Income(0, IncomeType.system, monthStart, monthEnd);
   }
 }

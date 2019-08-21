@@ -8,6 +8,7 @@ import income.tax.impl.domain.IncomeTaxCommand.Register;
 import income.tax.impl.domain.IncomeTaxEvent.Registered;
 import income.tax.impl.message.Message;
 import income.tax.impl.tools.DateUtils;
+import income.tax.impl.tools.IncomeUtils;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.OffsetDateTime;
@@ -61,7 +62,8 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
       // In response to this command, we want to first persist it as a
       // Registered event
       log.debug("processing command {}", cmd);
-      return ctx.thenPersist(new IncomeTaxEvent.Registered(entityId(), cmd.registrationDate, cmd.previousYearlyIncome),
+      final Income yearlyIncome = IncomeUtils.scaleToFullYear(cmd.previousYearlyIncome);
+      return ctx.thenPersist(new IncomeTaxEvent.Registered(entityId(), cmd.registrationDate, yearlyIncome),
           // Then once the event is successfully persisted, we respond with done.
           evt -> ctx.reply(Done.getInstance()));
     });
@@ -88,7 +90,7 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
      */
     b.setEventHandler(IncomeTaxEvent.Registered.class,
         // Update the current state with the contributor id and the registered date
-        evt -> new IncomeTaxState(evt.contributorId, evt.registrationDate, evt.previousYearlyIncome));
+        evt -> IncomeTaxState.of(evt.contributorId, evt.registrationDate, evt.previousYearlyIncome));
 
     /*
     * Event handler for Income application events

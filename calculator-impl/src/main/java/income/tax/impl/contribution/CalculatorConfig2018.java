@@ -194,7 +194,11 @@ public class CalculatorConfig2018 implements CalculatorConfig, ConstantProvider 
         // base income
         (income) -> {
           BigDecimal incomeValue = BigDecimal.valueOf(income);
-          return incomeValue.min(prci);
+          if (incomeValue.compareTo(prci) < 0) {
+            return incomeValue;
+          } else {
+            return prci;
+          }
         },
         // rate
         (income) -> new BigDecimal("7"),

@@ -22,7 +22,7 @@ class CalculatorConfig2018Test {
   private Map<String, ContributionConfig> contributionConfigs = calculatorConfig.contributionConfigs();
 
   @Test
-  public void whenIncomeGreaterThan5Ceil() {
+  public void highIncome() {
 
     final long income = 240_000;
     final BigDecimal incomeValue = BigDecimal.valueOf(income);
@@ -85,6 +85,114 @@ class CalculatorConfig2018Test {
     baseIncome = incomeValue.multiply(csgRate);
     expectedContribution = new BigDecimal("32592.00");
     compute(CSG_CRDS.code(), income, rate, baseIncome, expectedContribution, "32592");
+  }
+
+  @Test
+  public void meanIncome() {
+
+    final long income = 23_844;
+    final BigDecimal incomeValue = BigDecimal.valueOf(income);
+
+    BigDecimal expectedContribution;
+    BigDecimal baseIncome;
+    BigDecimal rate;
+
+    // MAL1: Maladie 1 T1 + T2
+    rate = new BigDecimal("1"); // not significant
+    baseIncome = incomeValue;
+    expectedContribution = new BigDecimal("972.32");
+    compute(Maladie1.code(), income, rate, baseIncome, expectedContribution, "972");
+
+    // MAL2
+    rate = new BigDecimal("0.85");
+    baseIncome = incomeValue;
+    expectedContribution = new BigDecimal("202.68");
+    compute(Maladie2.code(), income, rate, baseIncome, expectedContribution, "202");
+
+    // RVB
+    rate = new BigDecimal("1"); // not significant
+    baseIncome = incomeValue;
+    expectedContribution = new BigDecimal("4232.31");
+    compute(Retraite.code(), income, rate, baseIncome, expectedContribution, "4232");
+
+    // RCI
+    rate = new BigDecimal("1"); // not significant
+    baseIncome = incomeValue;
+    expectedContribution = new BigDecimal("1669.08");
+    compute(RetraiteComplémentaire.code(), income, rate, baseIncome, expectedContribution, "1669");
+
+    // RID
+    rate = new BigDecimal("1.3");
+    baseIncome = incomeValue;
+    expectedContribution = new BigDecimal("309.98");
+    compute(InvalidititéDécès.code(), income, rate, baseIncome, expectedContribution, "309");
+
+    // AF
+    rate = BigDecimal.ZERO; // R < 110% * PASS
+    baseIncome = incomeValue;
+    expectedContribution = new BigDecimal("0.00");;
+    compute(AllocationsFamiliales.code(), income, rate, baseIncome, expectedContribution, "0");
+
+    // CSG/CRDS
+    BigDecimal csgRate = calculatorConfig.getCalculationConstant("CSG");
+    rate = new BigDecimal("9.7");
+    baseIncome = incomeValue.multiply(csgRate);
+    expectedContribution = new BigDecimal("3238.02");
+    compute(CSG_CRDS.code(), income, rate, baseIncome, expectedContribution, "3238");
+  }
+
+  @Test
+  public void lowIncome() {
+
+    final long income = 11_520;
+    final BigDecimal incomeValue = BigDecimal.valueOf(income);
+
+    BigDecimal expectedContribution;
+    BigDecimal baseIncome;
+    BigDecimal rate;
+
+    // MAL1: Maladie 1 T1 + T2
+    rate = new BigDecimal("1"); // not significant
+    baseIncome = incomeValue;
+    expectedContribution = new BigDecimal("364.98");
+    compute(Maladie1.code(), income, rate, baseIncome, expectedContribution, "364");
+
+    // MAL2
+    rate = new BigDecimal("0.85");
+    baseIncome = pass40percent;
+    expectedContribution = new BigDecimal("135.09");
+    compute(Maladie2.code(), income, rate, baseIncome, expectedContribution, "135");
+
+    // RVB
+    rate = new BigDecimal("1"); // not significant
+    baseIncome = incomeValue;
+    expectedContribution = new BigDecimal("2044.80");
+    compute(Retraite.code(), income, rate, baseIncome, expectedContribution, "2044");
+
+    // RCI
+    rate = new BigDecimal("1"); // not significant
+    baseIncome = incomeValue;
+    expectedContribution = new BigDecimal("806.40");
+    compute(RetraiteComplémentaire.code(), income, rate, baseIncome, expectedContribution, "806");
+
+    // RID
+    rate = new BigDecimal("1.3");
+    baseIncome = incomeValue;
+    expectedContribution = new BigDecimal("149.76");
+    compute(InvalidititéDécès.code(), income, rate, baseIncome, expectedContribution, "149");
+
+    // AF
+    rate = BigDecimal.ZERO; // R < 110% * PASS
+    baseIncome = incomeValue;
+    expectedContribution = new BigDecimal("0.00");;
+    compute(AllocationsFamiliales.code(), income, rate, baseIncome, expectedContribution, "0");
+
+    // CSG/CRDS
+    BigDecimal csgRate = calculatorConfig.getCalculationConstant("CSG");
+    rate = new BigDecimal("9.7");
+    baseIncome = incomeValue.multiply(csgRate);
+    expectedContribution = new BigDecimal("1564.42");
+    compute(CSG_CRDS.code(), income, rate, baseIncome, expectedContribution, "1564");
   }
 
   private void compute(String code, long income,

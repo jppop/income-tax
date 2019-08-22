@@ -2,7 +2,6 @@ package income.tax.impl.domain;
 
 import income.tax.api.Income;
 import income.tax.impl.contribution.Contribution;
-import income.tax.impl.contribution.ContributionType;
 import income.tax.impl.tools.IncomeUtils;
 import org.pcollections.HashTreePMap;
 import org.pcollections.IntTreePMap;
@@ -23,7 +22,7 @@ public final class IncomeAdjusters {
       PMap<Integer, Income> newIncomes = applyIncome(income, state.currentIncomes);
 
       // calculate contributions
-      PMap<ContributionType, Contribution> newContributions = calculateContributions(newIncomes);
+      PMap<String, Contribution> newContributions = calculateContributions(newIncomes);
 
       // return new state
       return state.modifier()
@@ -41,7 +40,7 @@ public final class IncomeAdjusters {
       PMap<Integer, Income> newIncomes = applyIncome(income, state.currentIncomes);
 
       // calculate contributions
-      PMap<ContributionType, Contribution> newContributions = calculateContributions(newIncomes);
+      PMap<String, Contribution> newContributions = calculateContributions(newIncomes);
 
       // return new state
       return state.modifier()
@@ -59,7 +58,7 @@ public final class IncomeAdjusters {
       PMap<Integer, Income> newIncomes = applyIncome(newYearIncome, IntTreePMap.empty());
 
       // calculate contributions
-      PMap<ContributionType, Contribution> newContributions = calculateContributions(newIncomes);
+      PMap<String, Contribution> newContributions = calculateContributions(newIncomes);
 
       // return new state
       return state.modifier()
@@ -69,7 +68,7 @@ public final class IncomeAdjusters {
     };
   }
 
-  private static PMap<ContributionType, Contribution> calculateContributions(PMap<Integer, Income> newIncomes) {
+  private static PMap<String, Contribution> calculateContributions(PMap<Integer, Income> newIncomes) {
     return HashTreePMap.empty();
   }
 

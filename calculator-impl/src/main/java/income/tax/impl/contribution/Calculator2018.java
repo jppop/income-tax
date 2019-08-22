@@ -7,7 +7,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-public class CalculatorConfig2018 implements CalculatorConfig, ConstantProvider {
+import static income.tax.impl.contribution.Calculator2018.ContributionType.*;
+
+public class Calculator2018 implements Calculator, ConstantProvider {
 
   private static final long PASS = 39732;
   private static final long PRCI = 37846;
@@ -23,16 +25,95 @@ public class CalculatorConfig2018 implements CalculatorConfig, ConstantProvider 
   private static final BigDecimal pass110 = pass.multiply(new BigDecimal("1.1"), mc);
   private static final BigDecimal pass0115 = pass.multiply(new BigDecimal("0.115"), mc);
 
-  private static ContributionCalculator defaultContributonCalculator
-      = (income, baseIncome, rate) -> baseIncome.multiply(rate.scaleByPowerOfTen(-2), mc).setScale(2, RoundingMode.CEILING);
+  private static ContributionCalculator defaultContributionCalculator
+      = (income, baseIncome, rate) -> baseIncome.multiply(rate.scaleByPowerOfTen(-2), mc);
 
   private Map<String, ContributionConfig> contributionConfigs = new HashMap<>();
 
-  public CalculatorConfig2018() {
+  public Calculator2018() {
     configure();
   }
 
-  public Map<String, ContributionConfig> contributionConfigs() {
+  @Override
+  public int getYear() {
+    return 2018;
+  }
+
+  @Override
+  public BigDecimal round(BigDecimal value) {
+    return value.setScale(0, RoundingMode.FLOOR);
+  }
+
+  @Override
+  public Map<String, Contribution> compute(BigDecimal income) {
+    return compute(income, false);
+  }
+
+  private static final ContributionType[] contributionToBeComputed = new ContributionType[] {
+      Maladie1, Maladie2, Retraite, RetraiteComplémentaire, InvalidititéDécès, AllocationsFamiliales, CSG_CRDS
+  };
+
+  public Map<String, Contribution> compute(BigDecimal income, boolean round) {
+    Map<String, Contribution> contributions = new HashMap<>();
+
+    for (ContributionType type: contributionToBeComputed) {
+      Contribution contribution = compute(income, round, type.code());
+      contributions.put(contribution.type, contribution);
+    }
+
+    return contributions;
+  }
+
+  public Map<String, Contribution> computeFromMonthlyIncome(BigDecimal income, boolean round) {
+    Map<String, Contribution> contributions = new HashMap<>();
+    final BigDecimal monthCount = BigDecimal.valueOf(12);
+    Map<String, Contribution> yearlyContributions = compute(income.multiply(monthCount), round);
+    for (Map.Entry<String, Contribution> entry : yearlyContributions.entrySet()) {
+      Contribution yearlyContribution = entry.getValue();
+      contributions.put(
+          entry.getKey(),
+          new Contribution(
+              yearlyContribution.type,
+              yearlyContribution.income.divide(monthCount, mc),
+              yearlyContribution.baseIncome.divide(monthCount, mc),
+              yearlyContribution.rate,
+              yearlyContribution.contribution.divide(monthCount, mc)));
+    }
+    return contributions;
+  }
+  
+  private Contribution compute(BigDecimal income, boolean round, String code) {
+    ContributionConfig contributionConfig = contributionConfigs.get(code);
+    BigDecimal baseIncome = contributionConfig.baseIncomeCalculator.compute(income);
+    BigDecimal contributionAmount = contributionConfig.compute(income);
+    if (round) {
+      contributionAmount = round(contributionAmount);
+    }
+    // informative rate
+    BigDecimal rate;
+    if (baseIncome.compareTo(BigDecimal.ZERO) == 0) {
+      rate = BigDecimal.ZERO;
+    } else {
+      rate = contributionAmount.divide(baseIncome, mc).scaleByPowerOfTen(2).setScale(2, RoundingMode.CEILING);
+    }
+    return new Contribution(code, income, baseIncome, rate, contributionAmount);
+  }
+
+  @Override
+  public BigDecimal getCalculationConstant(String name) {
+    switch (name.toUpperCase()) {
+      case "PASS":
+        return pass;
+      case "PRCI":
+        return prci;
+      case "CSG":
+        return csgRate;
+      default:
+        return BigDecimal.ZERO;
+    }
+  }
+
+  Map<String, ContributionConfig> contributionConfigs() {
     return Collections.unmodifiableMap(contributionConfigs);
   }
 
@@ -44,58 +125,53 @@ public class CalculatorConfig2018 implements CalculatorConfig, ConstantProvider 
     contributionConfig = new ContributionConfig(
         // base income
         (income) -> {
-          BigDecimal incomeValue = BigDecimal.valueOf(income);
-          if (incomeValue.compareTo(passX5) > 0) {
-            return incomeValue.subtract(passX5);
+          if (income.compareTo(passX5) > 0) {
+            return income.subtract(passX5);
           } else {
             return BigDecimal.ZERO;
           }
         },
         // rate
         (income) -> new BigDecimal("6.5"),
-        defaultContributonCalculator
+        defaultContributionCalculator
     );
     contributionConfigs.put(ContributionType.Maladie1T2.code(), contributionConfig);
 
     // MLD1T1: Maladie 1 T2 pour la tranche des revenus inférieurs à 5 x PASS
     contributionConfig = new ContributionConfig(
         // base income
-        (income) -> BigDecimal.valueOf(income).max(pass40percent).min(passX5),
+        (income) -> income.max(pass40percent).min(passX5),
         // rate
         (income) -> {
           BigDecimal rate;
-          BigDecimal incomeValue = BigDecimal.valueOf(income);
-          if (incomeValue.compareTo(BigDecimal.ZERO) >= 0 && incomeValue.compareTo(pass40percent) <= 0) {
+          if (income.compareTo(BigDecimal.ZERO) >= 0 && income.compareTo(pass40percent) <= 0) {
             // contribution.rate = ((6.35 - 1.35) / (1.1 * PASS)) * yearlyIncome + (1.35 - 0) / (0.4 * PASS) * yearlyIncome;
             // contribution.rate = ((5 / (1.1 * PASS) + (1.35/(0.4 * PASS)) * yearlyIncome;
             // contribution.rate = ((5/1.1 + 1.35/0.4) / PASS) * yearlyIncome;
             rate = new BigDecimal(5).divide(new BigDecimal("1.1"), mc);
             rate = rate.add(new BigDecimal("1.35").divide(new BigDecimal("0.4"), mc));
             rate = rate.divide(pass, mc);
-            rate = rate.multiply(incomeValue, mc);
-          } else if (incomeValue.compareTo(BigDecimal.ZERO) > 0 && incomeValue.compareTo(pass110) <= 0) {
+            rate = rate.multiply(income, mc);
+          } else if (income.compareTo(BigDecimal.ZERO) > 0 && income.compareTo(pass110) <= 0) {
             // contribution.rate = (((6.35 - 1.35) / (1.1 * PASS)) * yearlyIncome) + 1.35;
             // contribution.rate = 1.35 + (5 / (1.1 * PASS)) * yearlyIncome;
             rate = new BigDecimal(5).divide(new BigDecimal("1.1"), mc);
             rate = rate.divide(pass, mc);
-            rate = rate.multiply(incomeValue, mc);
+            rate = rate.multiply(income, mc);
             rate = rate.add(new BigDecimal("1.35"), mc);
           } else {
             rate = new BigDecimal("6.35");
           }
           return rate;
         },
-        defaultContributonCalculator
+        defaultContributionCalculator
     );
     contributionConfigs.put(ContributionType.Maladie1T1.code(), contributionConfig);
 
     // MAL1: MAL1T1 + MAL1T2
     contributionConfig = new ContributionConfig(
         // base income
-        (income) -> {
-          BigDecimal incomeValue = BigDecimal.valueOf(income);
-          return incomeValue;
-        },
+        (income) -> income,
         // rate
         (income) -> new BigDecimal("1"), // not really significant
         (income, baseIncome, rate) -> {
@@ -118,13 +194,10 @@ public class CalculatorConfig2018 implements CalculatorConfig, ConstantProvider 
     // MAL2: Maladie 2
     contributionConfig = new ContributionConfig(
         // base income
-        (income) -> {
-          BigDecimal incomeValue = BigDecimal.valueOf(income);
-          return incomeValue.max(pass40percent).min(passX5);
-        },
+        (income) -> income.max(pass40percent).min(passX5),
         // rate
         (income) -> new BigDecimal("0.85"),
-        defaultContributonCalculator
+        defaultContributionCalculator
     );
     contributionConfigs.put(ContributionType.Maladie2.code(), contributionConfig);
 
@@ -132,18 +205,17 @@ public class CalculatorConfig2018 implements CalculatorConfig, ConstantProvider 
     contributionConfig = new ContributionConfig(
         // base income
         (income) -> {
-          BigDecimal incomeValue = BigDecimal.valueOf(income);
-          if (incomeValue.compareTo(pass) >= 0) {
+          if (income.compareTo(pass) >= 0) {
             return pass;
-          } else if (incomeValue.compareTo(pass0115) > 0) {
-            return incomeValue;
+          } else if (income.compareTo(pass0115) > 0) {
+            return income;
           } else {
             return pass0115;
           }
         },
         // rate
         (income) -> new BigDecimal("17.75"),
-        defaultContributonCalculator
+        defaultContributionCalculator
     );
     contributionConfigs.put(ContributionType.RetraiteT1.code(), contributionConfig);
 
@@ -151,25 +223,21 @@ public class CalculatorConfig2018 implements CalculatorConfig, ConstantProvider 
     contributionConfig = new ContributionConfig(
         // base income
         (income) -> {
-          BigDecimal incomeValue = BigDecimal.valueOf(income);
-          if (incomeValue.compareTo(pass) >= 0) {
-            return incomeValue.subtract(pass);
+          if (income.compareTo(pass) >= 0) {
+            return income.subtract(pass);
           } else {
             return BigDecimal.ZERO;
           }
         },
         // rate
         (income) -> new BigDecimal("0.6"),
-        defaultContributonCalculator
+        defaultContributionCalculator
     );
     contributionConfigs.put(ContributionType.RetraiteT2.code(), contributionConfig);
 
     contributionConfig = new ContributionConfig(
         // base income
-        (income) -> {
-          BigDecimal incomeValue = BigDecimal.valueOf(income);
-          return incomeValue;
-        },
+        (income) -> income,
         // rate
         (income) -> new BigDecimal("1"), // not really significant
         (income, baseIncome, rate) -> {
@@ -193,16 +261,15 @@ public class CalculatorConfig2018 implements CalculatorConfig, ConstantProvider 
     contributionConfig = new ContributionConfig(
         // base income
         (income) -> {
-          BigDecimal incomeValue = BigDecimal.valueOf(income);
-          if (incomeValue.compareTo(prci) < 0) {
-            return incomeValue;
+          if (income.compareTo(prci) < 0) {
+            return income;
           } else {
             return prci;
           }
         },
         // rate
         (income) -> new BigDecimal("7"),
-        defaultContributonCalculator
+        defaultContributionCalculator
     );
     contributionConfigs.put(ContributionType.RetraiteComplémentaireT1.code(), contributionConfig);
 
@@ -210,28 +277,24 @@ public class CalculatorConfig2018 implements CalculatorConfig, ConstantProvider 
     contributionConfig = new ContributionConfig(
         // base income
         (income) -> {
-          BigDecimal incomeValue = BigDecimal.valueOf(income);
-          if (incomeValue.compareTo(prci) < 0) {
+          if (income.compareTo(prci) < 0) {
             return BigDecimal.ZERO;
-          } else if (incomeValue.compareTo(passX4) >= 0) {
+          } else if (income.compareTo(passX4) >= 0) {
             return passX4.subtract(prci, mc);
           } else {
-            return incomeValue.subtract(prci, mc);
+            return income.subtract(prci, mc);
           }
         },
         // rate
         (income) -> new BigDecimal("8"),
-        defaultContributonCalculator
+        defaultContributionCalculator
     );
     contributionConfigs.put(ContributionType.RetraiteComplémentaireT2.code(), contributionConfig);
 
     // RCI = RCI T1 + RCI T2
     contributionConfig = new ContributionConfig(
         // base income
-        (income) -> {
-          BigDecimal incomeValue = BigDecimal.valueOf(income);
-          return incomeValue;
-        },
+        (income) -> income,
         // rate
         (income) -> new BigDecimal("1"), // not really significant
         (income, baseIncome, rate) -> {
@@ -255,77 +318,51 @@ public class CalculatorConfig2018 implements CalculatorConfig, ConstantProvider 
     contributionConfig = new ContributionConfig(
         // base income
         (income) -> {
-          BigDecimal incomeValue = BigDecimal.valueOf(income);
-          if (incomeValue.compareTo(pass0115) < 0) {
+          if (income.compareTo(pass0115) < 0) {
             return pass0115;
-          } else if (incomeValue.compareTo(pass) < 0) {
-            return incomeValue;
+          } else if (income.compareTo(pass) < 0) {
+            return income;
           } else {
             return pass;
           }
         },
         // rate
         (income) -> new BigDecimal("1.3"),
-        defaultContributonCalculator
+        defaultContributionCalculator
     );
     contributionConfigs.put(ContributionType.InvalidititéDécès.code(), contributionConfig);
 
     // AF: Allocation familiales
     contributionConfig = new ContributionConfig(
         // base income
-        (income) -> BigDecimal.valueOf(income),
+        (income) -> income,
         // rate
         (income) -> {
-          BigDecimal incomeValue = BigDecimal.valueOf(income);
-          if (incomeValue.compareTo(pass110) < 0) {
+          if (income.compareTo(pass110) < 0) {
             return BigDecimal.ZERO;
-          } else if (incomeValue.compareTo(pass.multiply(new BigDecimal("1.4"), mc)) > 0) {
+          } else if (income.compareTo(pass.multiply(new BigDecimal("1.4"), mc)) > 0) {
             return new BigDecimal("3.1");
           } else {
             BigDecimal r1 = new BigDecimal("3.1").divide(pass.multiply(new BigDecimal("0.3"), mc));
-            return r1.multiply(incomeValue.subtract(new BigDecimal("1.1").multiply(pass, mc), mc), mc);
+            return r1.multiply(income.subtract(new BigDecimal("1.1").multiply(pass, mc), mc), mc);
           }
         },
-        defaultContributonCalculator
+        defaultContributionCalculator
     );
     contributionConfigs.put(ContributionType.AllocationsFamiliales.code(), contributionConfig);
 
     // CSG_CRDS
     contributionConfig = new ContributionConfig(
         // base income
-        (income) -> BigDecimal.valueOf(income).multiply(csgRate, mc),
+        (income) -> income.multiply(csgRate, mc),
         // rate
         (income) -> new BigDecimal("9.7"),
-        defaultContributonCalculator
+        defaultContributionCalculator
     );
     contributionConfigs.put(ContributionType.CSG_CRDS.code(), contributionConfig);
   }
 
-  @Override
-  public BigDecimal getCalculationConstant(String name) {
-    switch (name.toUpperCase()) {
-      case "PASS":
-        return pass;
-      case "PRCI":
-        return prci;
-      case "CSG":
-        return csgRate;
-      default:
-        return BigDecimal.ZERO;
-    }
-  }
-
-  @Override
-  public int getYear() {
-    return 2018;
-  }
-
-  @Override
-  public BigDecimal round(BigDecimal value) {
-    return value.setScale(0, RoundingMode.FLOOR);
-  }
-
-  public enum ContributionType {
+  enum ContributionType {
     Maladie1T2("MLD1T2"), // Maladie 1 dans la limite de 5 PASS
     Maladie1T1("MLD1T1"), // Maladie 1 au delà de de 5 PASS
     Maladie1("MAL1"), // Maladie 1 = MLD1T1 + MLDT2

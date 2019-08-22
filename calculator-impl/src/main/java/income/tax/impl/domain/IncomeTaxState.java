@@ -6,7 +6,6 @@ import com.google.common.base.Preconditions;
 import com.lightbend.lagom.serialization.CompressedJsonable;
 import income.tax.api.Income;
 import income.tax.impl.contribution.Contribution;
-import income.tax.impl.contribution.ContributionType;
 import lombok.NonNull;
 import lombok.Value;
 import org.pcollections.HashTreePMap;
@@ -41,14 +40,14 @@ public final class IncomeTaxState implements CompressedJsonable {
   PMap<Integer, Income> currentIncomes;
 
   public final @NonNull
-  PMap<ContributionType, Contribution> contributions;
+  PMap<String, Contribution> contributions;
 
   @JsonCreator
   public IncomeTaxState(
       @NonNull String contributorId, @NonNull OffsetDateTime registeredDate,
       @NonNull PMap<Integer, Income> previousYearlyIncomes,
       int contributionYear, PMap<Integer, Income> currentIncomes,
-      @NonNull PMap<ContributionType, Contribution> contributions) {
+      @NonNull PMap<String, Contribution> contributions) {
     this.contributorId = Preconditions.checkNotNull(contributorId, "message");
     this.registeredDate = Preconditions.checkNotNull(registeredDate, "registeredDate");
     this.previousYearlyIncomes = Preconditions.checkNotNull(previousYearlyIncomes, "yearlyPreviousIncomes");
@@ -82,7 +81,7 @@ public final class IncomeTaxState implements CompressedJsonable {
     private final IncomeTaxState currentState;
     private PMap<Integer, Income> previousYearlyIncomes;
     private PMap<Integer, Income> currentIncomes;
-    private PMap<ContributionType, Contribution> contributions;
+    private PMap<String, Contribution> contributions;
 
     public Modifier(IncomeTaxState currentState) {
       this.currentState = currentState;
@@ -101,7 +100,7 @@ public final class IncomeTaxState implements CompressedJsonable {
       return this;
     }
 
-    public Modifier withNewContributions(PMap<ContributionType, Contribution> newContributions) {
+    public Modifier withNewContributions(PMap<String, Contribution> newContributions) {
       this.contributions = newContributions;
       return this;
     }

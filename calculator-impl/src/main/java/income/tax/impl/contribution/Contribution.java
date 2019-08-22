@@ -8,8 +8,8 @@ import java.math.BigDecimal;
 public class Contribution {
 
   public final String type;
-  public final BigDecimal rate;
-  public final BigDecimal baseIncome;
   public final BigDecimal income;
-  public final BigDecimal cell;
+  public final BigDecimal baseIncome;
+  public final BigDecimal rate;
+  public final BigDecimal contribution;
 }

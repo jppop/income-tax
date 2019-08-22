@@ -1,4 +1,4 @@
-package income.tax.impl.calculation;
+package income.tax.impl.contribution;
 
 import com.fasterxml.jackson.annotation.JsonValue;
 

@@ -1,4 +1,4 @@
-package income.tax.impl.calculation;
+package income.tax.impl.contribution;
 
 import lombok.Value;
 
@@ -7,7 +7,7 @@ import java.math.BigDecimal;
 @Value
 public class Contribution {
 
-  public final ContributionType type;
+  public final String type;
   public final BigDecimal rate;
   public final BigDecimal baseIncome;
   public final BigDecimal income;

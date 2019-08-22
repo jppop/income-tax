@@ -1,8 +1,8 @@
 package income.tax.impl.domain;
 
 import income.tax.api.Income;
-import income.tax.impl.calculation.Contribution;
-import income.tax.impl.calculation.ContributionType;
+import income.tax.impl.contribution.Contribution;
+import income.tax.impl.contribution.ContributionType;
 import income.tax.impl.tools.IncomeUtils;
 import org.pcollections.HashTreePMap;
 import org.pcollections.IntTreePMap;

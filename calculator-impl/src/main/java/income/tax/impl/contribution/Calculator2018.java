@@ -1,5 +1,9 @@
 package income.tax.impl.contribution;
 
+import income.tax.calculator.Calculator;
+import income.tax.calculator.ConstantProvider;
+import income.tax.calculator.Contribution;
+
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
@@ -44,15 +48,11 @@ public class Calculator2018 implements Calculator, ConstantProvider {
     return value.setScale(0, RoundingMode.FLOOR);
   }
 
-  @Override
-  public Map<String, Contribution> compute(BigDecimal income) {
-    return compute(income, false);
-  }
-
   private static final ContributionType[] contributionToBeComputed = new ContributionType[] {
       Maladie1, Maladie2, Retraite, RetraiteComplémentaire, InvalidititéDécès, AllocationsFamiliales, CSG_CRDS
   };
 
+  @Override
   public Map<String, Contribution> compute(BigDecimal income, boolean round) {
     Map<String, Contribution> contributions = new HashMap<>();
 
@@ -64,6 +64,7 @@ public class Calculator2018 implements Calculator, ConstantProvider {
     return contributions;
   }
 
+  @Override
   public Map<String, Contribution> computeFromMonthlyIncome(BigDecimal income, boolean round) {
     Map<String, Contribution> contributions = new HashMap<>();
     final BigDecimal monthCount = BigDecimal.valueOf(12);

@@ -1,7 +1,9 @@
 package income.tax.impl.domain;
 
 import income.tax.api.Income;
-import income.tax.impl.contribution.Contribution;
+import income.tax.calculator.Calculator;
+import income.tax.calculator.Contribution;
+import income.tax.impl.CalculationModule;
 import income.tax.impl.tools.IncomeUtils;
 import org.pcollections.HashTreePMap;
 import org.pcollections.IntTreePMap;
@@ -10,6 +12,12 @@ import org.pcollections.PMap;
 import java.util.Map;
 
 public final class IncomeAdjusters {
+
+  private static Map<Integer, Calculator> calculators;
+
+  static {
+    calculators = CalculationModule.loadCalculators();
+  }
 
   public static IncomeAdjuster previousYear(Income income) {
     return (state) -> {

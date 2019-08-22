@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.google.common.base.Preconditions;
 import com.lightbend.lagom.serialization.CompressedJsonable;
 import income.tax.api.Income;
-import income.tax.impl.contribution.Contribution;
+import income.tax.calculator.Contribution;
 import lombok.NonNull;
 import lombok.Value;
 import org.pcollections.HashTreePMap;

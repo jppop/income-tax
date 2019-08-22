@@ -1,4 +1,4 @@
-package income.tax.impl.contribution;
+package income.tax.calculator;
 
 import lombok.Value;
 
@@ -10,7 +10,9 @@ public interface Calculator {
   int getYear();
   BigDecimal round(BigDecimal value);
 
-  Map<String, Contribution> compute(BigDecimal income);
+  Map<String, Contribution> compute(BigDecimal income, boolean round);
+
+  Map<String, Contribution> computeFromMonthlyIncome(BigDecimal income, boolean round);
 
   @FunctionalInterface
   interface IncomeBasedCalculator {

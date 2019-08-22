@@ -1,10 +1,10 @@
-package income.tax.impl.contribution;
+package income.tax.calculator;
 
 import lombok.Value;
 
 import java.math.BigDecimal;
 
-@Value
+@Value(staticConstructor = "of")
 public class Contribution {
 
   public final String type;

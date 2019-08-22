@@ -1,5 +1,6 @@
 package income.tax.impl.contribution;
 
+import income.tax.calculator.Contribution;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -7,7 +8,7 @@ import java.math.RoundingMode;
 import java.util.Map;
 import java.util.Optional;
 
-import static income.tax.impl.contribution.Calculator.ContributionConfig;
+import static income.tax.calculator.Calculator.ContributionConfig;
 import static income.tax.impl.contribution.Calculator2018.ContributionType.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;

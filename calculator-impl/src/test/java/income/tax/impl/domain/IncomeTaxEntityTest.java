@@ -9,6 +9,7 @@ import income.tax.api.IncomeType;
 import income.tax.impl.tools.IncomeUtils;
 import org.junit.jupiter.api.*;
 import org.pcollections.HashTreePMap;
+import org.pcollections.IntTreePMap;
 import org.pcollections.PMap;
 
 import java.time.*;
@@ -85,30 +86,22 @@ class IncomeTaxEntityTest {
     // Arrange
     final String contributorId = ENTITY_ID;
 
-    OffsetDateTime registrationDate =
-        OffsetDateTime.of(
-            LocalDate.of(
-                2019, Month.APRIL, 12),
-            LocalTime.NOON,
-            OffsetDateTime.now(ZoneOffset.UTC).getOffset());
-
-    OffsetDateTime lastYear = registrationDate.minusYears(1);
-    OffsetDateTime lastYearStart = minFirstDayOfYear.apply(lastYear);
-    OffsetDateTime lastYearEnd = maxLastDayOfYear.apply(lastYear);
-    Income previousYearlyIncome = new Income(12 * 1000, IncomeType.estimated, lastYearStart, lastYearEnd);
-    IncomeTaxState incomeTaxState = IncomeTaxState.of(contributorId, registrationDate, previousYearlyIncome);
+    IncomeTaxState incomeTaxState = initialState(contributorId, 2020);
     driver.initialize(Optional.of(incomeTaxState));
+
+    OffsetDateTime registrationDate = incomeTaxState.registeredDate;
+    Income previousYearlyIncome = incomeTaxState.previousYearlyIncomes.get(registrationDate.getYear() - 1);
 
     // Act
     OffsetDateTime month =
         OffsetDateTime.of(
             LocalDate.of(
-                2019, Month.APRIL, 15),
+                incomeTaxState.contributionYear, Month.APRIL, 15),
             LocalTime.NOON,
             OffsetDateTime.now(ZoneOffset.UTC).getOffset());
     Income monthlyIncome =
         new Income(1500, IncomeType.estimated,
-                minFirstDayOfMonth.apply(month), maxLastDayOfMonth.apply(month));
+            minFirstDayOfMonth.apply(month), maxLastDayOfMonth.apply(month));
     Income incomeToTheEndOfYear = IncomeUtils.scaleToEndOfYear(monthlyIncome);
 
     Outcome<IncomeTaxEvent, IncomeTaxState> outcome =
@@ -126,7 +119,7 @@ class IncomeTaxEntityTest {
     long yearlyIncome = currentIncomes.values().stream().mapToLong(Income::getIncome).sum();
     long expectedYearlyIncome =
         (registrationDate.getMonthValue() - 1) * (previousYearlyIncome.income / 12)
-        + (12 - registrationDate.getMonthValue() + 1) * monthlyIncome.income;
+            + (12 - registrationDate.getMonthValue() + 1) * monthlyIncome.income;
     assertThat(yearlyIncome).isEqualTo(expectedYearlyIncome);
 
     long incomeBeforeRegistration =
@@ -142,26 +135,15 @@ class IncomeTaxEntityTest {
     // Arrange
     final String contributorId = ENTITY_ID;
 
-    OffsetDateTime registrationDate =
-        OffsetDateTime.of(
-            LocalDate.of(
-                2019, Month.APRIL, 12),
-            LocalTime.NOON,
-            OffsetDateTime.now(ZoneOffset.UTC).getOffset());
-
-    OffsetDateTime lastYear = registrationDate.minusYears(1);
-    OffsetDateTime lastYearStart = minFirstDayOfYear.apply(lastYear);
-    OffsetDateTime lastYearEnd = maxLastDayOfYear.apply(lastYear);
-    Income previousYearlyIncome = new Income(12 * 1000, IncomeType.estimated, lastYearStart, lastYearEnd);
-    Map<Integer, Income> currentIncomes = yearlyIncome(2019, 1000, 1000, 1000, 1210, 1220, 1230, 1310, 1320, 1330, 1410, 1420, 1430);
-    IncomeTaxState incomeTaxState =
-        IncomeTaxState.of(contributorId, registrationDate, previousYearlyIncome).modifier()
-        .withNewCurrentIncomes(HashTreePMap.from(currentIncomes))
-        .modify();
+    IncomeTaxState incomeTaxState = initialState(contributorId, 2021);
     driver.initialize(Optional.of(incomeTaxState));
 
+    OffsetDateTime registrationDate = incomeTaxState.registeredDate;
+    Income previousYearlyIncome = incomeTaxState.previousYearlyIncomes.get(registrationDate.getYear() - 1);
+    PMap<Integer, Income> currentIncomes = incomeTaxState.currentIncomes;
+
     // Act
-    LocalDate start = LocalDate.of(2019, Month.JULY, 1);
+    LocalDate start = LocalDate.of(incomeTaxState.contributionYear, Month.JULY, 1);
     LocalDate end = start.plusMonths(2);
     Income quarterIncome =
         new Income(2000 + (1310 + 1320 + 1330), IncomeType.estimated,
@@ -197,7 +179,7 @@ class IncomeTaxEntityTest {
     assertThat(amounts).hasSize(12);
     Map<Integer, Income> yearlyIncomes = new HashMap<>(12);
     int month = 0;
-    for (long monthlyIncome: amounts) {
+    for (long monthlyIncome : amounts) {
       month++;
       LocalDate monthDate = LocalDate.of(year, month, 1);
       OffsetDateTime monthTime = OffsetDateTime.of(monthDate, LocalTime.MIN, ZoneOffset.UTC);
@@ -208,5 +190,26 @@ class IncomeTaxEntityTest {
     return yearlyIncomes;
   }
 
+  private IncomeTaxState initialState(String contributorId, int registrationYear) {
 
+    OffsetDateTime registrationDate =
+        OffsetDateTime.of(
+            LocalDate.of(
+                registrationYear, Month.APRIL, 12),
+            LocalTime.NOON,
+            OffsetDateTime.now(ZoneOffset.UTC).getOffset());
+
+    OffsetDateTime lastYear = registrationDate.minusYears(1);
+    OffsetDateTime lastYearStart = minFirstDayOfYear.apply(lastYear);
+    OffsetDateTime lastYearEnd = maxLastDayOfYear.apply(lastYear);
+    Income previousYearlyIncome = new Income(12 * 1000, IncomeType.estimated, lastYearStart, lastYearEnd);
+    Map<Integer, Income> currentIncomes = yearlyIncome(registrationYear, 1000, 1000, 1000, 1210, 1220, 1230, 1310, 1320, 1330, 1410, 1420, 1430);
+    return
+        IncomeTaxState.of(contributorId, registrationDate)
+            .modifier()
+            .withNewPreviousYearlyIncome(IntTreePMap.singleton(lastYear.getYear(), previousYearlyIncome))
+            .withNewCurrentIncomes(HashTreePMap.from(currentIncomes))
+            .modify();
+
+  }
 }

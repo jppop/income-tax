@@ -30,9 +30,6 @@ public class IncomeUtils {
   private static Income scale(Income income, OffsetDateTime start, OffsetDateTime end) {
     Period period = Period.between(income.start.toLocalDate(), income.end.toLocalDate());
     int months = period.getMonths() + 1;
-    if (months == 12) {
-      return income;
-    }
     Period newPeriod = Period.between(start.toLocalDate(), end.toLocalDate());
     BigDecimal yearlyIncome =
         BigDecimal.valueOf(income.income)
@@ -43,6 +40,8 @@ public class IncomeUtils {
   }
 
   public static Map<Integer, Income> spreadOutOverMonths(Income income) {
+
+    // scale the income value
     Period period = Period.between(income.start.toLocalDate(), income.end.toLocalDate());
     int months = period.getMonths() + 1;
     if (months == 1) {
@@ -52,9 +51,10 @@ public class IncomeUtils {
     long scaledIncome = BigDecimal.valueOf(income.income)
         .divide(BigDecimal.valueOf(months), RoundingMode.DOWN)
         .longValue();
+
     // add the scaled income until the last month minus 1
-    LocalDate firstOfMonthDate = LocalDate.of(income.start.getYear(), income.start.getMonthValue(), 1);
     ZoneOffset offset = income.start.getOffset();
+    LocalDate firstOfMonthDate = LocalDate.of(income.start.getYear(), income.start.getMonthValue(), 1);
     for (int month = income.start.getMonthValue(); month < income.end.getMonthValue(); month++) {
       OffsetDateTime startDay = OffsetDateTime.of(firstOfMonthDate, LocalTime.MIN, offset);
       OffsetDateTime endDay = OffsetDateTime.of(firstOfMonthDate.with(TemporalAdjusters.lastDayOfMonth()), LocalTime.MAX, offset);

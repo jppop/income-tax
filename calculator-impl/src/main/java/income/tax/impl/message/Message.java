@@ -6,7 +6,8 @@ public enum Message {
 
   E_OOPS_ERROR,
   E_ILLEGAL_PERIOD,
-  E_NOT_SINGLE_YEAR_PERIOD;
+  E_NOT_SINGLE_YEAR_PERIOD,
+  E_NOT_CURRENT_CONTRIBUTION_YEAR;
 
   private static final String COMPONENT_CODE = "TAX"; //
 

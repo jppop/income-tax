@@ -1,19 +1,17 @@
 package income.tax.impl.domain;
 
-import income.tax.api.Income;
-import income.tax.api.IncomeType;
-import income.tax.impl.tools.DateUtils;
-import lombok.NonNull;
-import lombok.Value;
-
+import akka.Done;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.google.common.base.Preconditions;
 import com.lightbend.lagom.javadsl.persistence.PersistentEntity;
 import com.lightbend.lagom.serialization.CompressedJsonable;
 import com.lightbend.lagom.serialization.Jsonable;
-
-import akka.Done;
+import income.tax.api.Income;
+import income.tax.api.IncomeType;
+import income.tax.impl.tools.DateUtils;
+import lombok.NonNull;
+import lombok.Value;
 
 import java.time.OffsetDateTime;
 
@@ -54,7 +52,7 @@ public interface IncomeTaxCommand extends Jsonable {
       OffsetDateTime lastYear = registrationDate.minusYears(1);
       OffsetDateTime lastYearStart = DateUtils.minFirstDayOfYear.apply(lastYear);
       OffsetDateTime lastYearEnd = DateUtils.maxLastDayOfYear.apply(lastYear);
-      this.previousYearlyIncome = new Income(previousYearlyIncome, incomeType, lastYearStart, lastYearStart);
+      this.previousYearlyIncome = new Income(previousYearlyIncome, incomeType, lastYearStart, lastYearEnd);
     }
   }
 

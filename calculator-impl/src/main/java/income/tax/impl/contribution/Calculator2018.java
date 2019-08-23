@@ -34,7 +34,7 @@ public class Calculator2018 implements Calculator, ConstantProvider {
 
   private Map<String, ContributionConfig> contributionConfigs = new HashMap<>();
 
-  Calculator2018() {
+  public Calculator2018() {
     configure();
   }
 

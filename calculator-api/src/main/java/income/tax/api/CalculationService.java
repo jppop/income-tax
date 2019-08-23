@@ -30,8 +30,7 @@ public interface CalculationService extends Service {
    *   </pre>
    * </p>
    */
-  ServiceCall<Contributor, Done> register();
-
+  ServiceCall<RegistrationRequest, Done> register();
 
   ServiceCall<Income, Done> applyIncome(String contributorId);
   /**

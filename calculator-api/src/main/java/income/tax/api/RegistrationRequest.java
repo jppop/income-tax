@@ -9,7 +9,7 @@ import java.time.OffsetDateTime;
 
 @Value
 @JsonDeserialize
-public final class Contributor {
+public final class RegistrationRequest {
 
   public final String contributorId;
   public final OffsetDateTime registrationDate;
@@ -17,7 +17,7 @@ public final class Contributor {
   public final IncomeType incomeType;
 
   @JsonCreator
-  public Contributor(String contributorId, OffsetDateTime registrationDate, long previousYearlyIncome, IncomeType incomeType) {
+  public RegistrationRequest(String contributorId, OffsetDateTime registrationDate, long previousYearlyIncome, IncomeType incomeType) {
     this.contributorId = Preconditions.checkNotNull(contributorId, "message");
     this.registrationDate = Preconditions.checkNotNull(registrationDate, "registrationDate");
     this.incomeType = Preconditions.checkNotNull(incomeType, "incomeType");

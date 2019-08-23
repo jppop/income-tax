@@ -53,7 +53,7 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
      *
      * Otherwise, the default state is to use the Hello greeting.
      */
-    BehaviorBuilder b = newBehaviorBuilder(snapshotState.orElse(IncomeTaxState.empty));
+    BehaviorBuilder b = newBehaviorBuilder(snapshotState.orElse(IncomeTaxState.initial));
 
     /*
      * Command handler for the Register command.
@@ -75,13 +75,7 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
         ctx.invalidCommand(possibleError.get());
         return ctx.done();
       }
-      IncomeTaxEvent incomeTaxEvent;
-      if (isAppliedInTheCurrentYear(cmd.income)) {
-        incomeTaxEvent = new IncomeTaxEvent.IncomeApplied(entityId(), cmd.income, now());
-      } else {
-        incomeTaxEvent = new IncomeTaxEvent.PreviousIncomeApplied(entityId(), cmd.income, now());
-      }
-      return ctx.thenPersist(incomeTaxEvent,
+      return ctx.thenPersist(new IncomeTaxEvent.IncomeApplied(entityId(), cmd.income, now()),
           // Then once the event is successfully persisted, we respond with done.
           evt -> ctx.reply(Done.getInstance()));
     });
@@ -89,8 +83,10 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
      * Event handler for the Registered event.
      */
     b.setEventHandler(IncomeTaxEvent.Registered.class,
-        // Update the current state with the contributor id and the registered date
-        evt -> IncomeTaxState.of(evt.contributorId, evt.registrationDate, evt.previousYearlyIncome));
+        // Start with a new state before registration time as if incomes already exist,
+        // then mutate it as if a new year begins
+        evt -> IncomeTaxState.of(evt.contributorId, evt.registrationDate)
+            .with(IncomeAdjusters.beforeRegistration(evt.previousYearlyIncome)));
 
     /*
     * Event handler for Income application events
@@ -113,16 +109,15 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
     OffsetDateTime end = DateUtils.maxLastDayOfMonth.apply(income.end);
 
     if (start.isAfter(end)) {
-      return Optional.of(Message.E_ILLEGAL_PERIOD.get());
+      return Optional.of(Message.E_ILLEGAL_PERIOD.get(income.start, income.end));
     }
     if (start.getYear() != end.getYear()) {
-      return Optional.of(Message.E_NOT_SINGLE_YEAR_PERIOD.get());
+      return Optional.of(Message.E_NOT_SINGLE_YEAR_PERIOD.get(income.start, income.end));
+    }
+    if (start.getYear() != state().contributionYear) {
+      return Optional.of(Message.E_NOT_CURRENT_CONTRIBUTION_YEAR.get(income.start, income.end));
     }
     return Optional.empty();
-  }
-
-  private boolean isAppliedInTheCurrentYear(Income income) {
-    return income.start.getYear() == state().contributionYear;
   }
 
   private IncomeAdjuster incomeAdjuster(Income income) {
@@ -130,7 +125,7 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
   }
 
   private IncomeAdjuster yearlyIncomeAdjuster(Income income) {
-    return IncomeAdjusters.previousYear(income);
+    return IncomeAdjusters.beforeRegistration(income);
   }
 
   private OffsetDateTime now() {

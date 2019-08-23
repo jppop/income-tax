@@ -113,9 +113,9 @@ class IncomeTaxEntityTest {
     assertThat(outcome.state().contributorId).isEqualTo(contributorId);
     assertThat(outcome.state().currentIncomes)
         .hasSize(12)
-        .contains(entry(monthlyIncome.start.getMonthValue(), monthlyIncome));
+        .contains(entry(monthlyIncome.start.getMonth(), monthlyIncome));
 
-    PMap<Integer, Income> currentIncomes = outcome.state().currentIncomes;
+    PMap<Month, Income> currentIncomes = outcome.state().currentIncomes;
     long yearlyIncome = currentIncomes.values().stream().mapToLong(Income::getIncome).sum();
     long expectedYearlyIncome =
         (registrationDate.getMonthValue() - 1) * (previousYearlyIncome.income / 12)
@@ -140,7 +140,7 @@ class IncomeTaxEntityTest {
 
     OffsetDateTime registrationDate = incomeTaxState.registeredDate;
     Income previousYearlyIncome = incomeTaxState.previousYearlyIncomes.get(registrationDate.getYear() - 1);
-    PMap<Integer, Income> currentIncomes = incomeTaxState.currentIncomes;
+    PMap<Month, Income> currentIncomes = incomeTaxState.currentIncomes;
 
     // Act
     LocalDate start = LocalDate.of(incomeTaxState.contributionYear, Month.JULY, 1);
@@ -160,14 +160,14 @@ class IncomeTaxEntityTest {
         .hasSize(12);
     long spreadOutValue = quarterIncome.income / 3;
     long remainder = quarterIncome.income % 3;
-    assertThat(outcome.state().currentIncomes.get(quarterIncome.start.getMonthValue()))
+    assertThat(outcome.state().currentIncomes.get(quarterIncome.start.getMonth()))
         .hasFieldOrPropertyWithValue("income", spreadOutValue);
-    assertThat(outcome.state().currentIncomes.get(quarterIncome.start.getMonthValue() + 1))
+    assertThat(outcome.state().currentIncomes.get(quarterIncome.start.plusMonths(1).getMonth()))
         .hasFieldOrPropertyWithValue("income", spreadOutValue);
-    assertThat(outcome.state().currentIncomes.get(quarterIncome.start.getMonthValue() + 2))
+    assertThat(outcome.state().currentIncomes.get(quarterIncome.start.plusMonths(2).getMonth()))
         .hasFieldOrPropertyWithValue("income", spreadOutValue + remainder);
 
-    PMap<Integer, Income> newCurrentIncomes = outcome.state().currentIncomes;
+    PMap<Month, Income> newCurrentIncomes = outcome.state().currentIncomes;
     long yearlyIncome = newCurrentIncomes.values().stream().mapToLong(Income::getIncome).sum();
     long expectedYearlyIncome =
         2000 + currentIncomes.values().stream().mapToLong(Income::getIncome).sum();
@@ -175,9 +175,9 @@ class IncomeTaxEntityTest {
 
   }
 
-  private Map<Integer, Income> yearlyIncome(int year, long... amounts) {
+  private Map<Month, Income> yearlyIncome(int year, long... amounts) {
     assertThat(amounts).hasSize(12);
-    Map<Integer, Income> yearlyIncomes = new HashMap<>(12);
+    Map<Month, Income> yearlyIncomes = new HashMap<>(12);
     int month = 0;
     for (long monthlyIncome : amounts) {
       month++;
@@ -185,7 +185,7 @@ class IncomeTaxEntityTest {
       OffsetDateTime monthTime = OffsetDateTime.of(monthDate, LocalTime.MIN, ZoneOffset.UTC);
       Income income =
           new Income(monthlyIncome, IncomeType.estimated, monthTime, monthTime.with(TemporalAdjusters.lastDayOfMonth()));
-      yearlyIncomes.put(month, income);
+      yearlyIncomes.put(Month.of(month), income);
     }
     return yearlyIncomes;
   }
@@ -203,7 +203,7 @@ class IncomeTaxEntityTest {
     OffsetDateTime lastYearStart = minFirstDayOfYear.apply(lastYear);
     OffsetDateTime lastYearEnd = maxLastDayOfYear.apply(lastYear);
     Income previousYearlyIncome = new Income(12 * 1000, IncomeType.estimated, lastYearStart, lastYearEnd);
-    Map<Integer, Income> currentIncomes = yearlyIncome(registrationYear, 1000, 1000, 1000, 1210, 1220, 1230, 1310, 1320, 1330, 1410, 1420, 1430);
+    Map<Month, Income> currentIncomes = yearlyIncome(registrationYear, 1000, 1000, 1000, 1210, 1220, 1230, 1310, 1320, 1330, 1410, 1420, 1430);
     return
         IncomeTaxState.of(contributorId, registrationDate)
             .modifier()

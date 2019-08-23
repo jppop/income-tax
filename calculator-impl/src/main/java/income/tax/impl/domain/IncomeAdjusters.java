@@ -82,7 +82,7 @@ public final class IncomeAdjusters {
 
   private static PMap<Integer, Income> applyIncome(Income income, PMap<Integer, Income> currentIncomes) {
 
-    // spred out the income over the months of the period
+    // spread out the income over the months of the period
     Map<Integer, Income> spreadIncome = IncomeUtils.spreadOutOverMonths(income);
     return currentIncomes.plusAll(spreadIncome);
   }

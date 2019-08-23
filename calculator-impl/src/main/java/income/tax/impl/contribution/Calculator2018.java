@@ -34,7 +34,7 @@ public class Calculator2018 implements Calculator, ConstantProvider {
 
   private Map<String, ContributionConfig> contributionConfigs = new HashMap<>();
 
-  public Calculator2018() {
+  Calculator2018() {
     configure();
   }
 
@@ -73,7 +73,7 @@ public class Calculator2018 implements Calculator, ConstantProvider {
       Contribution yearlyContribution = entry.getValue();
       contributions.put(
           entry.getKey(),
-          new Contribution(
+          Contribution.of(
               yearlyContribution.type,
               yearlyContribution.income.divide(monthCount, mc),
               yearlyContribution.baseIncome.divide(monthCount, mc),
@@ -97,7 +97,7 @@ public class Calculator2018 implements Calculator, ConstantProvider {
     } else {
       rate = contributionAmount.divide(baseIncome, mc).scaleByPowerOfTen(2).setScale(2, RoundingMode.CEILING);
     }
-    return new Contribution(code, income, baseIncome, rate, contributionAmount);
+    return Contribution.of(code, income, baseIncome, rate, contributionAmount);
   }
 
   @Override
@@ -344,7 +344,7 @@ public class Calculator2018 implements Calculator, ConstantProvider {
           } else if (income.compareTo(pass.multiply(new BigDecimal("1.4"), mc)) > 0) {
             return new BigDecimal("3.1");
           } else {
-            BigDecimal r1 = new BigDecimal("3.1").divide(pass.multiply(new BigDecimal("0.3"), mc));
+            BigDecimal r1 = new BigDecimal("3.1").divide(pass.multiply(new BigDecimal("0.3"), mc), mc);
             return r1.multiply(income.subtract(new BigDecimal("1.1").multiply(pass, mc), mc), mc);
           }
         },

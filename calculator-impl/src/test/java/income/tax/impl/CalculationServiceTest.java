@@ -2,8 +2,8 @@ package income.tax.impl;
 
 import akka.Done;
 import income.tax.api.CalculationService;
-import income.tax.api.Contributor;
 import income.tax.api.IncomeType;
+import income.tax.api.RegistrationRequest;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -32,7 +32,7 @@ public class CalculationServiceTest {
       IncomeType incomeType = IncomeType.estimated;
 
       // Act
-      Done done = service.register().invoke(new Contributor("#contributorId", registrationDate, lastYerIncome, incomeType)).toCompletableFuture().get(5, SECONDS);
+      Done done = service.register().invoke(new RegistrationRequest("#contributorId", registrationDate, lastYerIncome, incomeType)).toCompletableFuture().get(5, SECONDS);
 
       // Assert
       Assertions.assertThat(done).isNotNull();

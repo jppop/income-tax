@@ -6,9 +6,9 @@ import akka.stream.ActorMaterializer;
 import akka.stream.Materializer;
 import com.lightbend.lagom.javadsl.client.integration.LagomClientFactory;
 import income.tax.api.CalculationService;
-import income.tax.api.Contributor;
 import income.tax.api.Income;
 import income.tax.api.IncomeType;
+import income.tax.api.RegistrationRequest;
 import income.tax.stream.api.StreamService;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterAll;
@@ -68,7 +68,7 @@ public class StreamIT {
 
     Done answer = await(
         calculationService.register().invoke(
-            new Contributor("#contributor", registrationDate,
+            new RegistrationRequest("#contributor", registrationDate,
                 previousYearlyIncome.income, previousYearlyIncome.incomeType)));
     Assertions.assertThat(answer).isEqualTo(Done.getInstance());
   }

@@ -2,8 +2,8 @@ package income.tax.stream.impl;
 
 import akka.Done;
 import com.lightbend.lagom.javadsl.persistence.cassandra.CassandraSession;
-import income.tax.api.Contributor;
 import income.tax.api.IncomeType;
+import income.tax.api.RegistrationRequest;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -50,7 +50,7 @@ public class StreamRepository {
     );
   }
 
-  public CompletionStage<Optional<Contributor>> getContributor(String id) {
+  public CompletionStage<Optional<RegistrationRequest>> getContributor(String id) {
     return session().thenCompose(session ->
         session.selectOne(
             "SELECT registrationDate, previousIncome, previousIncomeType" +
@@ -61,7 +61,7 @@ public class StreamRepository {
           OffsetDateTime registrationDate = date.toInstant().atOffset(ZoneOffset.UTC);
           long previousIncome = row.getLong("previousIncome");
           IncomeType incomeType = IncomeType.valueOf(row.getString("previousIncomeType"));
-          return new Contributor(id, registrationDate, previousIncome, incomeType);
+          return new RegistrationRequest(id, registrationDate, previousIncome, incomeType);
         }));
   }
 }

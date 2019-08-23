@@ -9,8 +9,8 @@ import com.lightbend.lagom.javadsl.persistence.PersistentEntityRef;
 import com.lightbend.lagom.javadsl.persistence.PersistentEntityRegistry;
 import income.tax.api.CalculationEvent;
 import income.tax.api.CalculationService;
-import income.tax.api.Contributor;
 import income.tax.api.Income;
+import income.tax.api.RegistrationRequest;
 import income.tax.impl.domain.IncomeTaxCommand;
 import income.tax.impl.domain.IncomeTaxEntity;
 import income.tax.impl.domain.IncomeTaxEvent;
@@ -31,7 +31,7 @@ public class CalculationServiceImpl implements CalculationService {
   }
 
   @Override
-  public ServiceCall<Contributor, Done> register() {
+  public ServiceCall<RegistrationRequest, Done> register() {
     return contributor -> {
       // Look up the IncomeTax entity for the given ID.
       PersistentEntityRef<IncomeTaxCommand> ref =

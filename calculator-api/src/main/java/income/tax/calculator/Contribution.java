@@ -12,4 +12,5 @@ public class Contribution {
   public final BigDecimal baseIncome;
   public final BigDecimal rate;
   public final BigDecimal contribution;
+
 }

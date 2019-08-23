@@ -5,12 +5,18 @@ import income.tax.api.IncomeType;
 import income.tax.calculator.Calculator;
 import income.tax.calculator.Contribution;
 import income.tax.impl.CalculationModule;
+import income.tax.impl.contribution.Calculator2018;
 import income.tax.impl.tools.IncomeUtils;
 import org.pcollections.HashTreePMap;
 import org.pcollections.IntTreePMap;
 import org.pcollections.PMap;
 
+import java.math.BigDecimal;
+import java.time.Month;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 public final class IncomeAdjusters {
 
@@ -18,6 +24,10 @@ public final class IncomeAdjusters {
 
   static {
     calculators = CalculationModule.loadCalculators();
+    if (calculators.isEmpty()) {
+      // FIXME: Should stop the application
+      calculators.put(2018, new Calculator2018());
+    };
   }
 
   /**
@@ -33,16 +43,23 @@ public final class IncomeAdjusters {
       // scale income to a full year
       Income yearlyIncome = IncomeUtils.scaleToFullYear(income, state.registeredDate.getYear());
 
-      // spread out over income every month
-      PMap<Integer, Income> newIncomes = applyIncome(yearlyIncome, IntTreePMap.empty());
+      // spread out income over every month
+      Map<Integer, Income> spreadIncome = IncomeUtils.spreadOutOverMonths(yearlyIncome);
+      PMap<Integer, Income> newIncomes = IntTreePMap.from(spreadIncome);
 
       // register the yearly income before registration
       Income incomeBeforeRegistration = Income.ofYear(income.income, state.contributionYear - 1, income.incomeType);
+
+      // calculate contributions
+      Map<Month, PMap<String, Contribution>> newContributions =
+          calculateContributions(state.contributionYear, spreadIncome);
+      ContributionState newContributionState = state.contributions.update(newContributions);
 
       // return new state
       return state.modifier()
           .withNewPreviousYearlyIncome(IntTreePMap.singleton(state.contributionYear - 1, incomeBeforeRegistration))
           .withNewCurrentIncomes(newIncomes)
+          .withNewContributions(newContributionState)
           .modify();
     };
   }
@@ -57,15 +74,18 @@ public final class IncomeAdjusters {
     return (state) -> {
 
       // calculate new current year incomes
-      PMap<Integer, Income> newIncomes = applyIncome(income, state.currentIncomes);
+      Map<Integer, Income> spreadIncome = IncomeUtils.spreadOutOverMonths(income);
+      PMap<Integer, Income> newIncomes = state.currentIncomes.plusAll(spreadIncome);
 
       // calculate contributions
-      PMap<String, Contribution> newContributions = calculateContributions(newIncomes);
+      Map<Month, PMap<String, Contribution>> newContributions =
+          calculateContributions(state.contributionYear, spreadIncome);
+      ContributionState newContributionState = state.contributions.update(newContributions);
 
       // return new state
       return state.modifier()
           .withNewCurrentIncomes(newIncomes)
-          .withNewContributions(newContributions)
+          .withNewContributions(newContributionState)
           .modify();
     };
   }
@@ -91,24 +111,46 @@ public final class IncomeAdjusters {
           state.previousYearlyIncomes.plus(state.contributionYear,
               Income.ofYear(currentYearlyIncome, state.contributionYear, IncomeType.system));
 
-      // spread out over income every month
-      PMap<Integer, Income> newIncomes = applyIncome(nextYearlyIncome, IntTreePMap.empty());
+      // spread out income over every month
+      Map<Integer, Income> spreadIncome = IncomeUtils.spreadOutOverMonths(nextYearlyIncome);
+      PMap<Integer, Income> newIncomes = IntTreePMap.from(spreadIncome);
 
       // calculate contributions
-      PMap<String, Contribution> newContributions = calculateContributions(newIncomes);
+      Map<Month, PMap<String, Contribution>> newContributions =
+          calculateContributions(state.contributionYear, spreadIncome);
+      ContributionState newContributionState = state.contributions.update(newContributions);
 
       // mutate state
       return state.modifier()
           .withNewContributionYear(nextYear)
           .withNewPreviousYearlyIncome(newPreviousYearlyIncome)
           .withNewCurrentIncomes(newIncomes)
-          .withNewContributions(newContributions)
+          .withNewContributions(newContributionState)
           .modify();
     };
   }
 
-  private static PMap<String, Contribution> calculateContributions(PMap<Integer, Income> newIncomes) {
-    return HashTreePMap.empty();
+  private static Map<Month, PMap<String, Contribution>>
+  calculateContributions(int contributionYear, Map<Integer, Income> newIncomes) {
+    if (newIncomes.isEmpty()) {
+      return Collections.emptyMap();
+    }
+
+    // get the calculator
+    Calculator calculator = calculators.get(contributionYear);
+    if (calculator == null) {
+      Optional<Calculator> maybeCalculator = calculators.values().stream().findFirst();
+      calculator = maybeCalculator.orElseThrow(() -> new IllegalStateException("Something went really bad. No calculator defined"));
+    }
+    Map<Month, PMap<String, Contribution>> contributions = new HashMap<>();
+    for (Map.Entry<Integer, Income> entry : newIncomes.entrySet()) {
+      Month month = Month.of(entry.getKey());
+      Income income = entry.getValue();
+      Map<String, Contribution> monthContributions =
+          calculator.computeFromMonthlyIncome(new BigDecimal(income.income), false);
+      contributions.put(month, HashTreePMap.from(monthContributions));
+    }
+    return contributions;
   }
 
   private static PMap<Integer, Income> applyIncome(Income income, PMap<Integer, Income> currentIncomes) {

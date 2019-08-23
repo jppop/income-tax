@@ -3,6 +3,7 @@ package income.tax.impl.domain;
 import income.tax.api.Income;
 import income.tax.api.IncomeType;
 import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.time.*;
@@ -28,14 +29,17 @@ class IncomeAdjustersTest {
     Assertions.assertThat(newState.currentIncomes.values())
         .extracting("start.year")
         .containsExactly(2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020);
-    Assertions.assertThat(newState.contributions).isEmpty();
   }
 
+  @Disabled
   @Test
   void currentYear() {
+    // TODO
   }
 
+  @Disabled
   @Test
   void newYear() {
+    // TODO
   }
 }

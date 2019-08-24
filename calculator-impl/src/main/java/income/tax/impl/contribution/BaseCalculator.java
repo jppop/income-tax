@@ -15,28 +15,35 @@ import static income.tax.impl.contribution.BaseCalculator.ContributionType.*;
 
 public abstract class BaseCalculator implements Calculator, ConstantProvider {
 
-  static final MathContext mc = new MathContext(8, RoundingMode.DOWN);
+  final RoundingMode roundingMode;
+  final MathContext mc;
 
-  private final BigDecimal pass;
-  private final BigDecimal prci;
-  private final BigDecimal csgRate;
-  private final BigDecimal passX4;
-  private final BigDecimal passX5;
-  private final BigDecimal pass40percent;
-  private final BigDecimal pass110;
-  private final BigDecimal pass0115;
+  final BigDecimal pass;
+  final BigDecimal prci;
+  final BigDecimal csgRate;
+  final BigDecimal passX4;
+  final BigDecimal passX5;
+  final BigDecimal pass40percent;
+  final BigDecimal pass110;
+  final BigDecimal pass0115;
 
   private static final ContributionType[] contributionToBeComputed = new ContributionType[] {
       Maladie1T1, Maladie1T2, Maladie2,
       RetraiteT1, RetraiteT2, RetraiteComplémentaireT1, RetraiteComplémentaireT2,
       InvalidititéDécès, AllocationsFamiliales, CSG_CRDS
   };
-  private static ContributionCalculator defaultContributionCalculator
-      = (income, baseIncome, rate) -> baseIncome.multiply(rate.scaleByPowerOfTen(-2), mc);
+  private ContributionCalculator defaultContributionCalculator
+      = (income, baseIncome, rate) -> baseIncome.multiply(rate.scaleByPowerOfTen(-2), mathContext());
+
+  private MathContext mathContext() {
+    return mc;
+  }
 
   private Map<String, ContributionConfig> contributionConfigs = new HashMap<>();
 
-  public BaseCalculator(BigDecimal passConstant, BigDecimal prciConstant, BigDecimal csgConstant) {
+  public BaseCalculator(RoundingMode roundingMode, BigDecimal passConstant, BigDecimal prciConstant, BigDecimal csgConstant) {
+    this.roundingMode  = roundingMode;
+    mc = new MathContext(8, roundingMode);
     pass = passConstant;
     prci = prciConstant;
     csgRate = csgConstant;
@@ -52,7 +59,7 @@ public abstract class BaseCalculator implements Calculator, ConstantProvider {
 
   @Override
   public BigDecimal round(BigDecimal value) {
-    return value.setScale(0, RoundingMode.FLOOR);
+    return value.setScale(0, roundingMode);
   }
 
   @Override
@@ -136,7 +143,7 @@ public abstract class BaseCalculator implements Calculator, ConstantProvider {
           }
         },
         // rate
-        (income) -> new BigDecimal("6.5"),
+        (income) -> new BigDecimal("6.50"),
         defaultContributionCalculator
     );
     contributionConfigs.put(Maladie1T2.code(), contributionConfig);
@@ -280,7 +287,7 @@ public abstract class BaseCalculator implements Calculator, ConstantProvider {
           }
         },
         // rate
-        (income) -> new BigDecimal("7"),
+        (income) -> new BigDecimal("7.00"),
         defaultContributionCalculator
     );
     contributionConfigs.put(RetraiteComplémentaireT1.code(), contributionConfig);
@@ -339,7 +346,7 @@ public abstract class BaseCalculator implements Calculator, ConstantProvider {
           }
         },
         // rate
-        (income) -> new BigDecimal("1.3"),
+        (income) -> new BigDecimal("1.30"),
         defaultContributionCalculator
     );
     contributionConfigs.put(InvalidititéDécès.code(), contributionConfig);
@@ -353,9 +360,9 @@ public abstract class BaseCalculator implements Calculator, ConstantProvider {
           if (income.compareTo(pass110) < 0) {
             return BigDecimal.ZERO;
           } else if (income.compareTo(pass.multiply(new BigDecimal("1.4"), mc)) > 0) {
-            return new BigDecimal("3.1");
+            return new BigDecimal("3.10");
           } else {
-            BigDecimal r1 = new BigDecimal("3.1").divide(pass.multiply(new BigDecimal("0.3"), mc), mc);
+            BigDecimal r1 = new BigDecimal("3.10").divide(pass.multiply(new BigDecimal("0.3"), mc), mc);
             return r1.multiply(income.subtract(new BigDecimal("1.1").multiply(pass, mc), mc), mc);
           }
         },

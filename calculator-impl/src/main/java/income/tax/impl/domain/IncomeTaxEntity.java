@@ -78,7 +78,7 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
 
     b.setCommandHandler(IncomeTaxCommand.ApplyIncome.class, (cmd, ctx) -> {
       log.debug("processing command {}", cmd);
-      Optional<String> possibleError = checkIncomeCommandArguments(cmd.income);
+      Optional<String> possibleError = checkIncomeCommandArguments(cmd);
       if (possibleError.isPresent()) {
         ctx.invalidCommand(possibleError.get());
         return ctx.done();
@@ -117,11 +117,12 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
     return b.build();
   }
 
-  private Optional<String> checkIncomeCommandArguments(Income income) {
+  private Optional<String> checkIncomeCommandArguments(ApplyIncome cmd) {
 
-    if (state().isRegistered) {
-      return Optional.of(Messages.E_ALREADY_REGISTERED.get(state().contributorId));
+    if (!state().isRegistered) {
+      return Optional.of(Messages.E_NOT_REGISTERED_YET.get(cmd.contributorId));
     }
+    Income income = cmd.income;
     // adjust start to the 1st of month
     OffsetDateTime start = DateUtils.minFirstDayOfMonth.apply(income.start);
     // adjust end to the last day of month

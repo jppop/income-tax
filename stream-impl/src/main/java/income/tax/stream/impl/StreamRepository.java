@@ -8,7 +8,7 @@ import income.tax.api.RegistrationRequest;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.util.Date;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -34,7 +34,7 @@ public class StreamRepository {
     if (initialisedSession == null || initialisedSession.isCompletedExceptionally()) {
       initialisedSession = uninitialisedSession.executeCreateTable(
           "CREATE TABLE IF NOT EXISTS contributor" +
-              " (id text PRIMARY KEY, registrationDate timestamp, previousIncome int, previousIncomeType text)"
+              " (id text PRIMARY KEY, registrationDate timestamp, previousIncome bigint, previousIncomeType text)"
       ).thenApply(done -> uninitialisedSession).toCompletableFuture();
     }
     return initialisedSession;
@@ -42,23 +42,24 @@ public class StreamRepository {
 
   public CompletionStage<Done> registerContributor(
       String contributorId, OffsetDateTime registrationDate, long previousIncome, IncomeType incomeType) {
-    return session().thenCompose(session ->
-        session.executeWrite(
-            "INSERT INTO contributor (id, registrationDate, previousIncome, previousIncomeType)" +
-                " VALUES (?, ?, ?, ?)",
-            contributorId, registrationDate.toInstant(), previousIncome, incomeType.name())
-    );
+    return session().thenCompose(session -> {
+      Date timestamp = Date.from(registrationDate.toInstant());
+      return session.executeWrite(
+          "INSERT INTO contributor (id, registrationDate, previousIncome, previousIncomeType)" +
+              " VALUES (?, ?, ?, ?)",
+          contributorId, timestamp, previousIncome, incomeType.name());
+    });
   }
 
   public CompletionStage<Optional<RegistrationRequest>> getContributor(String id) {
     return session().thenCompose(session ->
         session.selectOne(
             "SELECT registrationDate, previousIncome, previousIncomeType" +
-            " FROM contributor WHERE id = ?", id)
+                " FROM contributor WHERE id = ?", id)
     ).thenApply(maybeRow -> maybeRow.map(
         row -> {
-          Date date = row.getTimestamp("registrationDate");
-          OffsetDateTime registrationDate = date.toInstant().atOffset(ZoneOffset.UTC);
+          Date timestamp = row.getTimestamp("registrationDate");
+          OffsetDateTime registrationDate = OffsetDateTime.ofInstant(timestamp.toInstant(), ZoneId.of("UTC"));
           long previousIncome = row.getLong("previousIncome");
           IncomeType incomeType = IncomeType.valueOf(row.getString("previousIncomeType"));
           return new RegistrationRequest(id, registrationDate, previousIncome, incomeType);

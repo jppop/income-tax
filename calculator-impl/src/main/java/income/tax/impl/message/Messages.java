@@ -2,7 +2,7 @@ package income.tax.impl.message;
 
 import java.util.ResourceBundle;
 
-public enum Message {
+public enum Messages {
 
   E_OOPS_ERROR,
   E_ILLEGAL_PERIOD,
@@ -11,7 +11,7 @@ public enum Message {
 
   private static final String COMPONENT_CODE = "TAX"; //
 
-  private static final ResourceBundle resource = ResourceBundle.getBundle(Message.class.getName());
+  private static final ResourceBundle resource = ResourceBundle.getBundle(Messages.class.getName());
 
   public String get(Object... args) {
     return Helper.getMessage(resource, COMPONENT_CODE, this, args);

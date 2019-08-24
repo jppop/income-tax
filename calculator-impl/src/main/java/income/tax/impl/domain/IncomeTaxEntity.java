@@ -1,12 +1,12 @@
 package income.tax.impl.domain;
 
-import akka.Done;
 import com.lightbend.lagom.javadsl.persistence.PersistentEntity;
+import income.tax.api.Contributions;
 import income.tax.api.Income;
 import income.tax.impl.domain.IncomeTaxCommand.ApplyIncome;
 import income.tax.impl.domain.IncomeTaxCommand.Register;
 import income.tax.impl.domain.IncomeTaxEvent.Registered;
-import income.tax.impl.message.Message;
+import income.tax.impl.message.Messages;
 import income.tax.impl.tools.DateUtils;
 import income.tax.impl.tools.IncomeUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -65,7 +65,10 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
       final Income yearlyIncome = IncomeUtils.scaleToFullYear(cmd.previousYearlyIncome);
       return ctx.thenPersist(new IncomeTaxEvent.Registered(entityId(), cmd.registrationDate, yearlyIncome),
           // Then once the event is successfully persisted, we respond with done.
-          evt -> ctx.reply(Done.getInstance()));
+          evt -> ctx.reply(
+              Contributions.from(
+                  state().contributorId, state().contributionYear, state().contributions.contributions
+              )));
     });
 
     b.setCommandHandler(IncomeTaxCommand.ApplyIncome.class, (cmd, ctx) -> {
@@ -75,9 +78,13 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
         ctx.invalidCommand(possibleError.get());
         return ctx.done();
       }
-      return ctx.thenPersist(new IncomeTaxEvent.IncomeApplied(entityId(), cmd.income, now()),
+      Income income = cmd.scaleToEnd ? IncomeUtils.scaleToEndOfYear(cmd.income) : cmd.income;
+      return ctx.thenPersist(new IncomeTaxEvent.IncomeApplied(entityId(), income, now()),
           // Then once the event is successfully persisted, we respond with done.
-          evt -> ctx.reply(Done.getInstance()));
+          evt -> ctx.reply(
+              Contributions.from(
+                  state().contributorId, state().contributionYear, state().contributions.contributions
+              )));
     });
     /*
      * Event handler for the Registered event.
@@ -109,13 +116,13 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
     OffsetDateTime end = DateUtils.maxLastDayOfMonth.apply(income.end);
 
     if (start.isAfter(end)) {
-      return Optional.of(Message.E_ILLEGAL_PERIOD.get(income.start, income.end));
+      return Optional.of(Messages.E_ILLEGAL_PERIOD.get(income.start, income.end));
     }
     if (start.getYear() != end.getYear()) {
-      return Optional.of(Message.E_NOT_SINGLE_YEAR_PERIOD.get(income.start, income.end));
+      return Optional.of(Messages.E_NOT_SINGLE_YEAR_PERIOD.get(income.start, income.end));
     }
     if (start.getYear() != state().contributionYear) {
-      return Optional.of(Message.E_NOT_CURRENT_CONTRIBUTION_YEAR.get(income.start, income.end));
+      return Optional.of(Messages.E_NOT_CURRENT_CONTRIBUTION_YEAR.get(income.start, income.end));
     }
     return Optional.empty();
   }

@@ -1,6 +1,5 @@
 package income.tax.api;
 
-import akka.Done;
 import com.lightbend.lagom.javadsl.api.Descriptor;
 import com.lightbend.lagom.javadsl.api.Service;
 import com.lightbend.lagom.javadsl.api.ServiceCall;
@@ -25,14 +24,14 @@ public interface CalculationService extends Service {
    * Example: <br>
    *   <pre>
    *     curl -X POST -H "Content-Type: application/json" \
-   *        -d '{ "contributorId": "#id", "registrationDate": "2019-08-19T14:20:38Z"}' \
+   *        -d '{ "contributorId": "#id", "registrationDate": "2019-08-19T14:20:38Z"}, "previousYearlyIncome": 24000, "incomeType": "estimated"' \
    *        /api/income-tax/contributors
    *   </pre>
    * </p>
    */
-  ServiceCall<RegistrationRequest, Done> register();
+  ServiceCall<RegistrationRequest, Contributions> register();
 
-  ServiceCall<Income, Done> applyIncome(String contributorId);
+  ServiceCall<Income, Contributions> applyIncome(String contributorId, boolean scaleToEnd, boolean dryRun);
   /**
    * This gets published to Kafka.
    */
@@ -42,8 +41,8 @@ public interface CalculationService extends Service {
   default Descriptor descriptor() {
     // @formatter:off
     return named("calculation").withCalls(
-        pathCall("/api/income-tax/contributors", this::register),
-        pathCall("/api/income-tax/contributors/:contributorId/apply", this::applyIncome)
+        pathCall("/api/contributors", this::register),
+        pathCall("/api/contributions/:contributorId/declare?dryRun&scaleToEnd", this::applyIncome)
     ).withTopics(
         topic("calculation-events", this::calculationEvents)
             // Kafka partitions messages, messages within the same partition will

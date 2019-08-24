@@ -1,11 +1,11 @@
 package income.tax.stream.api;
 
-import akka.Done;
 import akka.NotUsed;
 import akka.stream.javadsl.Source;
 import com.lightbend.lagom.javadsl.api.Descriptor;
 import com.lightbend.lagom.javadsl.api.Service;
 import com.lightbend.lagom.javadsl.api.ServiceCall;
+import income.tax.api.Contributions;
 import income.tax.api.RegistrationRequest;
 
 import static com.lightbend.lagom.javadsl.api.Service.named;
@@ -25,7 +25,7 @@ public interface StreamService extends Service {
    * and running to function.
    * @return
    */
-  ServiceCall<Source<RegistrationRequest, NotUsed>, Source<Done, NotUsed>> directStream();
+  ServiceCall<Source<RegistrationRequest, NotUsed>, Source<Contributions, NotUsed>> directStream();
 
   /**
    * This stream is implemented autonomously, it uses its own store, populated

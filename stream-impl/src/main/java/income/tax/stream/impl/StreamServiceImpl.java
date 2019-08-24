@@ -1,10 +1,10 @@
 package income.tax.stream.impl;
 
-import akka.Done;
 import akka.NotUsed;
 import akka.stream.javadsl.Source;
 import com.lightbend.lagom.javadsl.api.ServiceCall;
 import income.tax.api.CalculationService;
+import income.tax.api.Contributions;
 import income.tax.api.RegistrationRequest;
 import income.tax.stream.api.StreamService;
 
@@ -28,9 +28,9 @@ public class StreamServiceImpl implements StreamService {
   }
 
   @Override
-  public ServiceCall<Source<RegistrationRequest, NotUsed>, Source<Done, NotUsed>> directStream() {
+  public ServiceCall<Source<RegistrationRequest, NotUsed>, Source<Contributions, NotUsed>> directStream() {
     return registrations -> completedFuture(
-        registrations.mapAsync(8, contributor ->  calculationService.register().invoke(contributor)));
+        registrations.mapAsync(8, request ->  calculationService.register().invoke(request)));
   }
 
   @Override

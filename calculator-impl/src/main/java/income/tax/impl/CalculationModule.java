@@ -6,10 +6,8 @@ import com.lightbend.lagom.javadsl.server.ServiceGuiceSupport;
 import income.tax.api.CalculationService;
 import income.tax.calculator.Calculator;
 
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.ServiceLoader;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * The module that binds the HelloService so that it can be served.
@@ -38,8 +36,10 @@ public class CalculationModule extends AbstractModule implements ServiceGuiceSup
     }
 
     // sort in the reverse order (the most recent will be the default implementation)
-    implementations.keySet().stream().sorted((o1, o2) -> o2.compareTo(o1));
-
-    return implementations;
+    Map result = implementations.entrySet().stream()
+        .sorted((o1, o2) -> o2.getKey().compareTo(o1.getKey()))
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
+            (oldValue, newValue) -> oldValue, LinkedHashMap::new));
+    return result;
   }
 }

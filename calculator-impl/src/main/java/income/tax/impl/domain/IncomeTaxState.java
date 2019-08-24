@@ -74,14 +74,14 @@ public final class IncomeTaxState implements CompressedJsonable {
     private final IncomeTaxState currentState;
     private PMap<Integer, Income> previousYearlyIncomes;
     private PMap<Month, Income> currentIncomes;
-    private ContributionState contributions;
+    private ContributionState contributionState;
     private int contributionYear;
 
     public Modifier(IncomeTaxState currentState) {
       this.currentState = currentState;
       this.previousYearlyIncomes = currentState.previousYearlyIncomes;
       this.currentIncomes = currentState.currentIncomes;
-      this.contributions = currentState.contributions;
+      this.contributionState = currentState.contributions;
       this.contributionYear = currentState.contributionYear;
     }
 
@@ -95,8 +95,8 @@ public final class IncomeTaxState implements CompressedJsonable {
       return this;
     }
 
-    public Modifier withNewContributions(ContributionState newContributions) {
-      this.contributions = newContributions;
+    public Modifier withNewContributions(ContributionState newContributionState) {
+      this.contributionState = newContributionState;
       return this;
     }
 
@@ -104,7 +104,7 @@ public final class IncomeTaxState implements CompressedJsonable {
       return new IncomeTaxState(
           currentState.contributorId, currentState.registeredDate,
           this.previousYearlyIncomes,
-          this.contributionYear, this.currentIncomes, this.contributions);
+          this.contributionYear, this.currentIncomes, this.contributionState);
     }
 
     public Modifier withNewContributionYear(int year) {

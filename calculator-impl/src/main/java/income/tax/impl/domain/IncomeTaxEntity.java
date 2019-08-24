@@ -62,13 +62,18 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
       // In response to this command, we want to first persist it as a
       // Registered event
       log.debug("processing command {}", cmd);
+      if (state().isRegistered) {
+        ctx.invalidCommand(Messages.E_ALREADY_REGISTERED.get(state().contributorId));
+        return ctx.done();
+      }
       final Income yearlyIncome = IncomeUtils.scaleToFullYear(cmd.previousYearlyIncome);
-      return ctx.thenPersist(new IncomeTaxEvent.Registered(entityId(), cmd.registrationDate, yearlyIncome),
-          // Then once the event is successfully persisted, we respond with done.
-          evt -> ctx.reply(
+      return ctx.thenPersistAll(
+          () -> ctx.reply(
               Contributions.from(
                   state().contributorId, state().contributionYear, state().contributions.contributions
-              )));
+              )),
+          new IncomeTaxEvent.Registered(entityId(), cmd.registrationDate, cmd.previousYearlyIncome),
+          new IncomeTaxEvent.ContributionScheduleStarted(entityId(), yearlyIncome));
     });
 
     b.setCommandHandler(IncomeTaxCommand.ApplyIncome.class, (cmd, ctx) -> {
@@ -92,11 +97,15 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
     b.setEventHandler(IncomeTaxEvent.Registered.class,
         // Start with a new state before registration time as if incomes already exist,
         // then mutate it as if a new year begins
-        evt -> IncomeTaxState.of(evt.contributorId, evt.registrationDate)
-            .with(IncomeAdjusters.beforeRegistration(evt.previousYearlyIncome)));
+        evt -> IncomeTaxState.of(evt.contributorId, true, evt.registrationDate));
+
+    b.setEventHandler(IncomeTaxEvent.ContributionScheduleStarted.class,
+        // Start with a new state before registration time as if incomes already exist,
+        // then mutate it as if a new year begins
+        evt -> state().with(IncomeAdjusters.beforeRegistration(evt.previousYearlyIncome)));
 
     /*
-    * Event handler for Income application events
+     * Event handler for Income application events
      */
     b.setEventHandler(IncomeTaxEvent.IncomeApplied.class,
         evt -> state().with(incomeAdjuster(evt.income)));
@@ -110,6 +119,9 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
 
   private Optional<String> checkIncomeCommandArguments(Income income) {
 
+    if (state().isRegistered) {
+      return Optional.of(Messages.E_ALREADY_REGISTERED.get(state().contributorId));
+    }
     // adjust start to the 1st of month
     OffsetDateTime start = DateUtils.minFirstDayOfMonth.apply(income.start);
     // adjust end to the last day of month

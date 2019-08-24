@@ -28,6 +28,9 @@ public final class IncomeTaxState implements CompressedJsonable {
   public final @NonNull
   String contributorId;
 
+  public final
+  boolean isRegistered;
+
   public final @NonNull
   OffsetDateTime registeredDate;
 
@@ -44,11 +47,12 @@ public final class IncomeTaxState implements CompressedJsonable {
 
   @JsonCreator
   public IncomeTaxState(
-      @NonNull String contributorId, @NonNull OffsetDateTime registeredDate,
+      @NonNull String contributorId, boolean isRegistered, @NonNull OffsetDateTime registeredDate,
       @NonNull PMap<Integer, Income> previousYearlyIncomes,
       int contributionYear, PMap<Month, Income> currentIncomes,
       @NonNull ContributionState contributions) {
     this.contributorId = Preconditions.checkNotNull(contributorId, "message");
+    this.isRegistered = isRegistered;
     this.registeredDate = Preconditions.checkNotNull(registeredDate, "registeredDate");
     this.previousYearlyIncomes = Preconditions.checkNotNull(previousYearlyIncomes, "yearlyPreviousIncomes");
     this.contributionYear = contributionYear;
@@ -56,10 +60,13 @@ public final class IncomeTaxState implements CompressedJsonable {
     this.contributions = Preconditions.checkNotNull(contributions, "contributions");
   }
 
-  static IncomeTaxState of(String contributorId, OffsetDateTime registeredDate) {
-    return new IncomeTaxState(contributorId, registeredDate,
+  static IncomeTaxState of(String contributorId, boolean isRegistered, OffsetDateTime registeredDate) {
+    return new IncomeTaxState(contributorId, isRegistered, registeredDate,
         IntTreePMap.empty(),
         registeredDate.getYear(), HashTreePMap.empty(), ContributionState.empty());
+  }
+  static IncomeTaxState of(String contributorId, OffsetDateTime registeredDate) {
+    return IncomeTaxState.of(contributorId, false, registeredDate);
   }
 
   IncomeTaxState with(IncomeAdjuster adjuster) {
@@ -102,7 +109,7 @@ public final class IncomeTaxState implements CompressedJsonable {
 
     public IncomeTaxState modify() {
       return new IncomeTaxState(
-          currentState.contributorId, currentState.registeredDate,
+          currentState.contributorId, currentState.isRegistered, currentState.registeredDate,
           this.previousYearlyIncomes,
           this.contributionYear, this.currentIncomes, this.contributionState);
     }

@@ -75,6 +75,7 @@ class IncomeTaxEntityTest {
             OffsetDateTime.now(ZoneOffset.UTC).getOffset());
 
     OffsetDateTime lastYear = registrationDate.minusYears(1);
+    OffsetDateTime decemberOfLastYear = lastYear.withMonth(12);
     OffsetDateTime lastYearStart = minFirstDayOfYear.apply(lastYear);
     OffsetDateTime lastYearEnd = maxLastDayOfYear.apply(lastYear);
     Income previousYearlyIncome = new Income(12 * LASTYEAR_MONTH_INCOME, IncomeType.estimated, lastYearStart, lastYearEnd);
@@ -84,8 +85,9 @@ class IncomeTaxEntityTest {
         driver.run(new IncomeTaxCommand.Register(entityId, registrationDate, previousYearlyIncome));
 
     // Assert
-    assertThat(outcome.events()).hasSize(1);
+    assertThat(outcome.events()).hasSize(2);
     assertThat(outcome.events().get(0)).isEqualTo(new IncomeTaxEvent.Registered(entityId, registrationDate, previousYearlyIncome));
+    assertThat(outcome.events().get(1)).isEqualTo(new IncomeTaxEvent.ContributionScheduleStarted(entityId, previousYearlyIncome));
     assertThat(outcome.state().contributorId).isEqualTo(entityId);
     assertThat(outcome.state().registeredDate).isEqualTo(registrationDate);
     assertThat(outcome.state().previousYearlyIncomes)
@@ -217,7 +219,7 @@ class IncomeTaxEntityTest {
     Income previousYearlyIncome = new Income(12 * LASTYEAR_MONTH_INCOME, IncomeType.estimated, lastYearStart, lastYearEnd);
 //    Map<Month, Income> currentIncomes = yearlyIncome(registrationYear, 1000, 1000, 1000, 1210, 1220, 1230, 1310, 1320, 1330, 1410, 1420, 1430);
     return
-        IncomeTaxState.of(contributorId, registrationDate)
+        IncomeTaxState.of(contributorId, true, registrationDate)
             .with(IncomeAdjusters.beforeRegistration(previousYearlyIncome));
 
   }

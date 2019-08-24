@@ -29,6 +29,11 @@ public interface IncomeTaxEvent extends Jsonable, AggregateEvent<IncomeTaxEvent>
    */
   AggregateEventShards<IncomeTaxEvent> TAG = AggregateEventTag.sharded(IncomeTaxEvent.class, 4);
 
+  @Override
+  default AggregateEventTagger<IncomeTaxEvent> aggregateTag() {
+    return TAG;
+  }
+
   /**
    * An event that represents a change in greeting message.
    */
@@ -43,8 +48,20 @@ public interface IncomeTaxEvent extends Jsonable, AggregateEvent<IncomeTaxEvent>
 
     @JsonCreator
     public Registered(String contributorId, OffsetDateTime registrationDate, Income previousYearlyIncome) {
-      this.contributorId = Preconditions.checkNotNull(contributorId, "name");
+      this.contributorId = Preconditions.checkNotNull(contributorId, "contributorId");
       this.registrationDate = Preconditions.checkNotNull(registrationDate, "registrationDate");
+      this.previousYearlyIncome = Preconditions.checkNotNull(previousYearlyIncome, "previousYearlyIncome");
+    }
+  }
+
+  @Value
+  final class ContributionScheduleStarted implements IncomeTaxEvent {
+    public final String contributorId;
+    public final Income previousYearlyIncome;
+
+    @JsonCreator
+    public ContributionScheduleStarted(String contributorId, Income previousYearlyIncome) {
+      this.contributorId = Preconditions.checkNotNull(contributorId, "contributorId");
       this.previousYearlyIncome = Preconditions.checkNotNull(previousYearlyIncome, "previousYearlyIncome");
     }
   }
@@ -58,7 +75,7 @@ public interface IncomeTaxEvent extends Jsonable, AggregateEvent<IncomeTaxEvent>
     @JsonCreator
     public IncomeApplied(String contributorId, Income income, OffsetDateTime createdAt) {
       this.contributorId = Preconditions.checkNotNull(contributorId, "contributorId");
-      this.income =  Preconditions.checkNotNull(income, "income");
+      this.income = Preconditions.checkNotNull(income, "income");
       this.createdAt = Preconditions.checkNotNull(createdAt, "createdAt");
     }
   }
@@ -71,14 +88,9 @@ public interface IncomeTaxEvent extends Jsonable, AggregateEvent<IncomeTaxEvent>
     @JsonCreator
     public PreviousIncomeApplied(String contributorId, Income income, OffsetDateTime createdAt) {
       this.contributorId = Preconditions.checkNotNull(contributorId, "contributorId");
-      this.income =  Preconditions.checkNotNull(income, "income");
+      this.income = Preconditions.checkNotNull(income, "income");
       this.createdAt = Preconditions.checkNotNull(createdAt, "createdAt");
     }
-  }
-
-  @Override
-  default AggregateEventTagger<IncomeTaxEvent> aggregateTag() {
-    return TAG;
   }
 
 }

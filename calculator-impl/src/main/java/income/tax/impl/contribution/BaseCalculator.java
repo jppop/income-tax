@@ -1,19 +1,17 @@
 package income.tax.impl.contribution;
 
+import income.tax.calculator.CalculationConstantProvider;
 import income.tax.calculator.Calculator;
-import income.tax.calculator.ConstantProvider;
 import income.tax.calculator.Contribution;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 import static income.tax.impl.contribution.BaseCalculator.ContributionType.*;
 
-public abstract class BaseCalculator implements Calculator, ConstantProvider {
+public abstract class BaseCalculator implements Calculator, CalculationConstantProvider {
 
   final RoundingMode roundingMode;
   final MathContext mc;
@@ -64,7 +62,7 @@ public abstract class BaseCalculator implements Calculator, ConstantProvider {
 
   @Override
   public Map<String, Contribution> compute(BigDecimal income, boolean round) {
-    Map<String, Contribution> contributions = new HashMap<>();
+    Map<String, Contribution> contributions = new LinkedHashMap<>();
 
     for (ContributionType type: contributionToBeComputed) {
       Contribution contribution = compute(income, round, type.code());
@@ -76,7 +74,7 @@ public abstract class BaseCalculator implements Calculator, ConstantProvider {
 
   @Override
   public Map<String, Contribution> computeFromMonthlyIncome(BigDecimal income, boolean round) {
-    Map<String, Contribution> contributions = new HashMap<>();
+    Map<String, Contribution> contributions = new LinkedHashMap<>();
     final BigDecimal monthCount = BigDecimal.valueOf(12);
     Map<String, Contribution> yearlyContributions = compute(income.multiply(monthCount), round);
     for (Map.Entry<String, Contribution> entry : yearlyContributions.entrySet()) {
@@ -122,6 +120,15 @@ public abstract class BaseCalculator implements Calculator, ConstantProvider {
       default:
         return BigDecimal.ZERO;
     }
+  }
+
+  @Override
+  public String[] getContributionTypes() {
+    List<String> types = new LinkedList<>();
+    for (ContributionType contributionType: contributionToBeComputed) {
+      types.add(contributionType.code());
+    }
+    return types.toArray(new String[types.size()]);
   }
 
   Map<String, ContributionConfig> contributionConfigs() {

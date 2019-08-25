@@ -3,6 +3,7 @@ package income.tax.impl.domain;
 import com.lightbend.lagom.javadsl.persistence.PersistentEntity;
 import income.tax.api.Contributions;
 import income.tax.api.Income;
+import income.tax.calculator.Contribution;
 import income.tax.impl.domain.IncomeTaxCommand.ApplyIncome;
 import income.tax.impl.domain.IncomeTaxCommand.Register;
 import income.tax.impl.domain.IncomeTaxEvent.Registered;
@@ -10,10 +11,14 @@ import income.tax.impl.message.Messages;
 import income.tax.impl.tools.DateUtils;
 import income.tax.impl.tools.IncomeUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.pcollections.PMap;
 
+import java.math.BigDecimal;
+import java.time.Month;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * This is an event sourced entity. It has a state, {@link IncomeTaxState}, which
@@ -69,8 +74,8 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
       final Income yearlyIncome = IncomeUtils.scaleToFullYear(cmd.previousYearlyIncome);
       return ctx.thenPersistAll(
           () -> ctx.reply(
-              Contributions.from(
-                  state().contributorId, state().contributionYear, state().contributions.contributions
+              contributionsFrom(
+                  state().contributorId, state().contributionYear, state().currentIncomes, state().contributions.contributions
               )),
           new IncomeTaxEvent.Registered(entityId(), cmd.registrationDate, cmd.previousYearlyIncome),
           new IncomeTaxEvent.ContributionScheduleStarted(entityId(), yearlyIncome));
@@ -87,8 +92,8 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
       return ctx.thenPersist(new IncomeTaxEvent.IncomeApplied(entityId(), income, now()),
           // Then once the event is successfully persisted, we respond with done.
           evt -> ctx.reply(
-              Contributions.from(
-                  state().contributorId, state().contributionYear, state().contributions.contributions
+              contributionsFrom(
+                  state().contributorId, state().contributionYear, state().currentIncomes, state().contributions.contributions
               )));
     });
     /*
@@ -150,6 +155,47 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
 
   private OffsetDateTime now() {
     return OffsetDateTime.now(ZoneOffset.UTC);
+  }
+
+  public static Contributions contributionsFrom(
+      String contributorId, int year, PMap<Month, Income> currentIncomes, PMap<Month, PMap<String, Contribution>> yearlyContributions) {
+
+    Map<Month, List<income.tax.api.Contribution>> contributions = new HashMap<>();
+    for (Map.Entry<Month, PMap<String, income.tax.calculator.Contribution>> entry : yearlyContributions.entrySet()) {
+      List<income.tax.api.Contribution> monthlyContributions = new ArrayList<>();
+      for (Map.Entry<String, income.tax.calculator.Contribution> entry2 : entry.getValue().entrySet()) {
+        income.tax.calculator.Contribution monthlyContribution = entry2.getValue();
+        monthlyContributions.add(
+            new income.tax.api.Contribution(
+                monthlyContribution.type,
+                monthlyContribution.income,
+                monthlyContribution.baseIncome,
+                monthlyContribution.rate,
+                monthlyContribution.contribution)
+        );
+      }
+      contributions.put(entry.getKey(), monthlyContributions);
+    }
+    // sort by month
+    Map<Month, List<income.tax.api.Contribution>> result = contributions.entrySet().stream()
+        .sorted(Map.Entry.comparingByKey())
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
+            (oldValue, newValue) -> oldValue, LinkedHashMap::new));
+
+    // sum all contributions by type
+    Map<String, BigDecimal> total = result.values().stream()
+        .flatMap(o -> o.stream())
+        .collect(Collectors.groupingBy(
+            income.tax.api.Contribution::getType,
+            LinkedHashMap::new,
+            Collectors.reducing(BigDecimal.ZERO, income.tax.api.Contribution::getContribution, (sum, c) -> sum.add(c))));
+
+    long yearlyIncome =
+        currentIncomes.values().stream()
+            .map(income -> income.income)
+            .reduce(0L, (sum, income) -> sum + income);
+
+    return new Contributions(contributorId, year, yearlyIncome, total, result);
   }
 
 }

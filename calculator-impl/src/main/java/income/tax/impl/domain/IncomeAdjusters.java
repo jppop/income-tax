@@ -130,8 +130,9 @@ public final class IncomeAdjusters {
     };
   }
 
-  private static Map<Month, PMap<String, Contribution>>
-  calculateContributions(int contributionYear, Map<Month, Income> newIncomes) {
+  private static
+  Map<Month, PMap<String, Contribution>> calculateContributions(int contributionYear, Map<Month, Income> newIncomes) {
+
     if (newIncomes.isEmpty()) {
       return Collections.emptyMap();
     }

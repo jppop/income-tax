@@ -4,11 +4,10 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import lombok.NonNull;
 import lombok.Value;
-import org.pcollections.HashTreePMap;
-import org.pcollections.PMap;
 
+import java.math.BigDecimal;
 import java.time.Month;
-import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Value
@@ -19,34 +18,20 @@ public class Contributions {
   String contributorId;
   public final
   int year;
+  public final
+  long yearlyIncome;
   public final @NonNull
-  PMap<Month, PMap<String, Contribution>> contributions;
+  Map<String, BigDecimal> yearlyContributions;
+  public final @NonNull
+  Map<Month, List<Contribution>> contributions;
 
   @JsonCreator
-  public Contributions(String contributorId, int year, PMap<Month, PMap<String, Contribution>> contributions) {
+  public Contributions(String contributorId, int year, long yearlyIncome, Map<String, BigDecimal> yearlyContributions, Map<Month, List<Contribution>> contributions) {
     this.contributorId = contributorId;
     this.year = year;
+    this.yearlyIncome = yearlyIncome;
+    this.yearlyContributions = yearlyContributions;
     this.contributions = contributions;
   }
 
-  public static Contributions from(String contributorId, int year, PMap<Month, PMap<String, income.tax.calculator.Contribution>> yearlyContributions) {
-    Map<Month, PMap<String, Contribution>> contributions = new HashMap<>();
-    for (Map.Entry<Month, PMap<String, income.tax.calculator.Contribution>> entry : yearlyContributions.entrySet()) {
-      Map<String, Contribution> monthlyContributions = new HashMap<>();
-      for (Map.Entry<String, income.tax.calculator.Contribution> entry2 : entry.getValue().entrySet()) {
-        income.tax.calculator.Contribution monthlyContribution = entry2.getValue();
-        monthlyContributions.put(
-            entry2.getKey(),
-            new Contribution(
-                monthlyContribution.type,
-                monthlyContribution.income,
-                monthlyContribution.baseIncome,
-                monthlyContribution.rate,
-                monthlyContribution.contribution)
-            );
-      }
-      contributions.put(entry.getKey(), HashTreePMap.from(monthlyContributions));
-    }
-    return new Contributions(contributorId, year, HashTreePMap.from(contributions));
-  }
 }

@@ -5,14 +5,13 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.google.common.base.Preconditions;
 import com.lightbend.lagom.serialization.CompressedJsonable;
 import income.tax.api.Income;
-import income.tax.impl.calculation.Contribution;
-import income.tax.impl.calculation.ContributionType;
 import lombok.NonNull;
 import lombok.Value;
 import org.pcollections.HashTreePMap;
 import org.pcollections.IntTreePMap;
 import org.pcollections.PMap;
 
+import java.time.Month;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 
@@ -24,10 +23,13 @@ import java.time.ZoneOffset;
 @JsonDeserialize
 public final class IncomeTaxState implements CompressedJsonable {
 
-  public static IncomeTaxState empty = new IncomeTaxState("nobody", OffsetDateTime.now(ZoneOffset.UTC), Income.ZERO);
+  public static IncomeTaxState initial = IncomeTaxState.of("john doe", OffsetDateTime.now(ZoneOffset.UTC));
 
   public final @NonNull
   String contributorId;
+
+  public final
+  boolean isRegistered;
 
   public final @NonNull
   OffsetDateTime registeredDate;
@@ -38,18 +40,19 @@ public final class IncomeTaxState implements CompressedJsonable {
   public final int contributionYear;
 
   public final @NonNull
-  PMap<Integer, Income> currentIncomes;
+  PMap<Month, Income> currentIncomes;
 
   public final @NonNull
-  PMap<ContributionType, Contribution> contributions;
+  ContributionState contributions;
 
   @JsonCreator
   public IncomeTaxState(
-      @NonNull String contributorId, @NonNull OffsetDateTime registeredDate,
+      @NonNull String contributorId, boolean isRegistered, @NonNull OffsetDateTime registeredDate,
       @NonNull PMap<Integer, Income> previousYearlyIncomes,
-      int contributionYear, PMap<Integer, Income> currentIncomes,
-      @NonNull PMap<ContributionType, Contribution> contributions) {
+      int contributionYear, PMap<Month, Income> currentIncomes,
+      @NonNull ContributionState contributions) {
     this.contributorId = Preconditions.checkNotNull(contributorId, "message");
+    this.isRegistered = isRegistered;
     this.registeredDate = Preconditions.checkNotNull(registeredDate, "registeredDate");
     this.previousYearlyIncomes = Preconditions.checkNotNull(previousYearlyIncomes, "yearlyPreviousIncomes");
     this.contributionYear = contributionYear;
@@ -57,17 +60,13 @@ public final class IncomeTaxState implements CompressedJsonable {
     this.contributions = Preconditions.checkNotNull(contributions, "contributions");
   }
 
-  private IncomeTaxState(String contributorId, OffsetDateTime registeredDate, Income previousYearlyIncomes) {
-    this(contributorId, registeredDate,
-        IntTreePMap.singleton(registeredDate.getYear() - 1, previousYearlyIncomes),
-        registeredDate.getYear(), IntTreePMap.empty(), HashTreePMap.empty());
+  static IncomeTaxState of(String contributorId, boolean isRegistered, OffsetDateTime registeredDate) {
+    return new IncomeTaxState(contributorId, isRegistered, registeredDate,
+        IntTreePMap.empty(),
+        registeredDate.getYear(), HashTreePMap.empty(), ContributionState.empty());
   }
-
-  static IncomeTaxState of(String contributorId, OffsetDateTime registeredDate, Income previousYearlyIncomes) {
-    IncomeTaxState incomeTaxState =
-        new IncomeTaxState(contributorId, registeredDate, previousYearlyIncomes)
-            .with(IncomeAdjusters.newYear(previousYearlyIncomes));
-    return incomeTaxState;
+  static IncomeTaxState of(String contributorId, OffsetDateTime registeredDate) {
+    return IncomeTaxState.of(contributorId, false, registeredDate);
   }
 
   IncomeTaxState with(IncomeAdjuster adjuster) {
@@ -81,14 +80,16 @@ public final class IncomeTaxState implements CompressedJsonable {
   public static class Modifier {
     private final IncomeTaxState currentState;
     private PMap<Integer, Income> previousYearlyIncomes;
-    private PMap<Integer, Income> currentIncomes;
-    private PMap<ContributionType, Contribution> contributions;
+    private PMap<Month, Income> currentIncomes;
+    private ContributionState contributionState;
+    private int contributionYear;
 
     public Modifier(IncomeTaxState currentState) {
       this.currentState = currentState;
       this.previousYearlyIncomes = currentState.previousYearlyIncomes;
       this.currentIncomes = currentState.currentIncomes;
-      this.contributions = currentState.contributions;
+      this.contributionState = currentState.contributions;
+      this.contributionYear = currentState.contributionYear;
     }
 
     public Modifier withNewPreviousYearlyIncome(PMap<Integer, Income> newPreviousYearlyIncome) {
@@ -96,21 +97,26 @@ public final class IncomeTaxState implements CompressedJsonable {
       return this;
     }
 
-    public Modifier withNewCurrentIncomes(PMap<Integer, Income> newCurrentIncomes) {
+    public Modifier withNewCurrentIncomes(PMap<Month, Income> newCurrentIncomes) {
       this.currentIncomes = newCurrentIncomes;
       return this;
     }
 
-    public Modifier withNewContributions(PMap<ContributionType, Contribution> newContributions) {
-      this.contributions = newContributions;
+    public Modifier withNewContributions(ContributionState newContributionState) {
+      this.contributionState = newContributionState;
       return this;
     }
 
     public IncomeTaxState modify() {
       return new IncomeTaxState(
-          currentState.contributorId, currentState.registeredDate,
+          currentState.contributorId, currentState.isRegistered, currentState.registeredDate,
           this.previousYearlyIncomes,
-          currentState.contributionYear, this.currentIncomes, this.contributions);
+          this.contributionYear, this.currentIncomes, this.contributionState);
+    }
+
+    public Modifier withNewContributionYear(int year) {
+      this.contributionYear = year;
+      return this;
     }
   }
 

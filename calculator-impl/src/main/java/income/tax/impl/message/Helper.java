@@ -17,7 +17,7 @@ public class Helper {
         } else {
             code = messageCode.ordinal();
         }
-        buffer.append("[").append(componentCode).append("-").append(String.format("%04d", code)).append("] ")
+        buffer.append("[").append(componentCode).append(String.format("%04d", code)).append("] ")
             .append(messageCode.toString()).append(" - ");
         try {
             final String format = resource.getString(messageCode.toString());

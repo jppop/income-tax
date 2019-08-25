@@ -1,19 +1,24 @@
 package income.tax.impl.domain;
 
-import akka.Done;
 import com.lightbend.lagom.javadsl.persistence.PersistentEntity;
+import income.tax.api.Contributions;
 import income.tax.api.Income;
+import income.tax.calculator.Contribution;
 import income.tax.impl.domain.IncomeTaxCommand.ApplyIncome;
 import income.tax.impl.domain.IncomeTaxCommand.Register;
 import income.tax.impl.domain.IncomeTaxEvent.Registered;
-import income.tax.impl.message.Message;
+import income.tax.impl.message.Messages;
 import income.tax.impl.tools.DateUtils;
 import income.tax.impl.tools.IncomeUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.pcollections.PMap;
 
+import java.math.BigDecimal;
+import java.time.Month;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * This is an event sourced entity. It has a state, {@link IncomeTaxState}, which
@@ -53,7 +58,7 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
      *
      * Otherwise, the default state is to use the Hello greeting.
      */
-    BehaviorBuilder b = newBehaviorBuilder(snapshotState.orElse(IncomeTaxState.empty));
+    BehaviorBuilder b = newBehaviorBuilder(snapshotState.orElse(IncomeTaxState.initial));
 
     /*
      * Command handler for the Register command.
@@ -62,38 +67,50 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
       // In response to this command, we want to first persist it as a
       // Registered event
       log.debug("processing command {}", cmd);
+      if (state().isRegistered) {
+        ctx.invalidCommand(Messages.E_ALREADY_REGISTERED.get(state().contributorId));
+        return ctx.done();
+      }
       final Income yearlyIncome = IncomeUtils.scaleToFullYear(cmd.previousYearlyIncome);
-      return ctx.thenPersist(new IncomeTaxEvent.Registered(entityId(), cmd.registrationDate, yearlyIncome),
-          // Then once the event is successfully persisted, we respond with done.
-          evt -> ctx.reply(Done.getInstance()));
+      return ctx.thenPersistAll(
+          () -> ctx.reply(
+              contributionsFrom(
+                  state().contributorId, state().contributionYear, state().currentIncomes, state().contributions.contributions
+              )),
+          new IncomeTaxEvent.Registered(entityId(), cmd.registrationDate, cmd.previousYearlyIncome),
+          new IncomeTaxEvent.ContributionScheduleStarted(entityId(), yearlyIncome));
     });
 
     b.setCommandHandler(IncomeTaxCommand.ApplyIncome.class, (cmd, ctx) -> {
       log.debug("processing command {}", cmd);
-      Optional<String> possibleError = checkIncomeCommandArguments(cmd.income);
+      Optional<String> possibleError = checkIncomeCommandArguments(cmd);
       if (possibleError.isPresent()) {
         ctx.invalidCommand(possibleError.get());
         return ctx.done();
       }
-      IncomeTaxEvent incomeTaxEvent;
-      if (isAppliedInTheCurrentYear(cmd.income)) {
-        incomeTaxEvent = new IncomeTaxEvent.IncomeApplied(entityId(), cmd.income, now());
-      } else {
-        incomeTaxEvent = new IncomeTaxEvent.PreviousIncomeApplied(entityId(), cmd.income, now());
-      }
-      return ctx.thenPersist(incomeTaxEvent,
+      Income income = cmd.scaleToEnd ? IncomeUtils.scaleToEndOfYear(cmd.income) : cmd.income;
+      return ctx.thenPersist(new IncomeTaxEvent.IncomeApplied(entityId(), income, now()),
           // Then once the event is successfully persisted, we respond with done.
-          evt -> ctx.reply(Done.getInstance()));
+          evt -> ctx.reply(
+              contributionsFrom(
+                  state().contributorId, state().contributionYear, state().currentIncomes, state().contributions.contributions
+              )));
     });
     /*
      * Event handler for the Registered event.
      */
     b.setEventHandler(IncomeTaxEvent.Registered.class,
-        // Update the current state with the contributor id and the registered date
-        evt -> IncomeTaxState.of(evt.contributorId, evt.registrationDate, evt.previousYearlyIncome));
+        // Start with a new state before registration time as if incomes already exist,
+        // then mutate it as if a new year begins
+        evt -> IncomeTaxState.of(evt.contributorId, true, evt.registrationDate));
+
+    b.setEventHandler(IncomeTaxEvent.ContributionScheduleStarted.class,
+        // Start with a new state before registration time as if incomes already exist,
+        // then mutate it as if a new year begins
+        evt -> state().with(IncomeAdjusters.beforeRegistration(evt.previousYearlyIncome)));
 
     /*
-    * Event handler for Income application events
+     * Event handler for Income application events
      */
     b.setEventHandler(IncomeTaxEvent.IncomeApplied.class,
         evt -> state().with(incomeAdjuster(evt.income)));
@@ -105,24 +122,27 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
     return b.build();
   }
 
-  private Optional<String> checkIncomeCommandArguments(Income income) {
+  private Optional<String> checkIncomeCommandArguments(ApplyIncome cmd) {
 
+    if (!state().isRegistered) {
+      return Optional.of(Messages.E_NOT_REGISTERED_YET.get(cmd.contributorId));
+    }
+    Income income = cmd.income;
     // adjust start to the 1st of month
     OffsetDateTime start = DateUtils.minFirstDayOfMonth.apply(income.start);
     // adjust end to the last day of month
     OffsetDateTime end = DateUtils.maxLastDayOfMonth.apply(income.end);
 
     if (start.isAfter(end)) {
-      return Optional.of(Message.E_ILLEGAL_PERIOD.get());
+      return Optional.of(Messages.E_ILLEGAL_PERIOD.get(income.start, income.end));
     }
     if (start.getYear() != end.getYear()) {
-      return Optional.of(Message.E_NOT_SINGLE_YEAR_PERIOD.get());
+      return Optional.of(Messages.E_NOT_SINGLE_YEAR_PERIOD.get(income.start, income.end));
+    }
+    if (start.getYear() != state().contributionYear) {
+      return Optional.of(Messages.E_NOT_CURRENT_CONTRIBUTION_YEAR.get(income.start, income.end));
     }
     return Optional.empty();
-  }
-
-  private boolean isAppliedInTheCurrentYear(Income income) {
-    return income.start.getYear() == state().contributionYear;
   }
 
   private IncomeAdjuster incomeAdjuster(Income income) {
@@ -130,11 +150,52 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
   }
 
   private IncomeAdjuster yearlyIncomeAdjuster(Income income) {
-    return IncomeAdjusters.previousYear(income);
+    return IncomeAdjusters.beforeRegistration(income);
   }
 
   private OffsetDateTime now() {
     return OffsetDateTime.now(ZoneOffset.UTC);
+  }
+
+  public static Contributions contributionsFrom(
+      String contributorId, int year, PMap<Month, Income> currentIncomes, PMap<Month, PMap<String, Contribution>> yearlyContributions) {
+
+    Map<Month, List<income.tax.api.Contribution>> contributions = new HashMap<>();
+    for (Map.Entry<Month, PMap<String, income.tax.calculator.Contribution>> entry : yearlyContributions.entrySet()) {
+      List<income.tax.api.Contribution> monthlyContributions = new ArrayList<>();
+      for (Map.Entry<String, income.tax.calculator.Contribution> entry2 : entry.getValue().entrySet()) {
+        income.tax.calculator.Contribution monthlyContribution = entry2.getValue();
+        monthlyContributions.add(
+            new income.tax.api.Contribution(
+                monthlyContribution.type,
+                monthlyContribution.income,
+                monthlyContribution.baseIncome,
+                monthlyContribution.rate,
+                monthlyContribution.contribution)
+        );
+      }
+      contributions.put(entry.getKey(), monthlyContributions);
+    }
+    // sort by month
+    Map<Month, List<income.tax.api.Contribution>> result = contributions.entrySet().stream()
+        .sorted(Map.Entry.comparingByKey())
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
+            (oldValue, newValue) -> oldValue, LinkedHashMap::new));
+
+    // sum all contributions by type
+    Map<String, BigDecimal> total = result.values().stream()
+        .flatMap(o -> o.stream())
+        .collect(Collectors.groupingBy(
+            income.tax.api.Contribution::getType,
+            LinkedHashMap::new,
+            Collectors.reducing(BigDecimal.ZERO, income.tax.api.Contribution::getContribution, (sum, c) -> sum.add(c))));
+
+    long yearlyIncome =
+        currentIncomes.values().stream()
+            .map(income -> income.income)
+            .reduce(0L, (sum, income) -> sum + income);
+
+    return new Contributions(contributorId, year, yearlyIncome, total, result);
   }
 
 }

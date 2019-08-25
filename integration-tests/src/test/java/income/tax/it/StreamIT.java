@@ -1,14 +1,10 @@
 package income.tax.it;
 
-import akka.Done;
 import akka.actor.ActorSystem;
 import akka.stream.ActorMaterializer;
 import akka.stream.Materializer;
 import com.lightbend.lagom.javadsl.client.integration.LagomClientFactory;
-import income.tax.api.CalculationService;
-import income.tax.api.Contributor;
-import income.tax.api.Income;
-import income.tax.api.IncomeType;
+import income.tax.api.*;
 import income.tax.stream.api.StreamService;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterAll;
@@ -66,11 +62,11 @@ public class StreamIT {
     OffsetDateTime lastYearEnd = lastYear.with(TemporalAdjusters.lastDayOfYear());
     Income previousYearlyIncome = new Income(12 * 1000, IncomeType.estimated, lastYearStart, lastYearEnd);
 
-    Done answer = await(
+    Contributions contributions = await(
         calculationService.register().invoke(
-            new Contributor("#contributor", registrationDate,
+            new RegistrationRequest("#contributor", registrationDate,
                 previousYearlyIncome.income, previousYearlyIncome.incomeType)));
-    Assertions.assertThat(answer).isEqualTo(Done.getInstance());
+    Assertions.assertThat(contributions).isNotNull();
   }
 
   @Test

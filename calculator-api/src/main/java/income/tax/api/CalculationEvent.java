@@ -10,7 +10,8 @@ import java.time.OffsetDateTime;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
 @JsonSubTypes({
-    @JsonSubTypes.Type(value = CalculationEvent.Registered.class, name = "income-tax-calculation-registered")
+    @JsonSubTypes.Type(value = CalculationEvent.Registered.class, name = "income-tax-calculation-registered"),
+    @JsonSubTypes.Type(value = CalculationEvent.IncomeApplied.class, name = "income-tax-calculation-income-applied")
 })
 public interface CalculationEvent {
 
@@ -32,4 +33,15 @@ public interface CalculationEvent {
     }
   }
 
+  @Value
+  final class IncomeApplied implements CalculationEvent {
+    public final String contributorId;
+    public final Income income;
+
+    @JsonCreator
+    public IncomeApplied(String contributorId, Income income) {
+      this.contributorId = contributorId;
+      this.income = income;
+    }
+  }
 }

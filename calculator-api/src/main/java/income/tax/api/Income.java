@@ -28,6 +28,20 @@ public class Income {
     this.end = Preconditions.checkNotNull(end, "end");
   }
 
+  public static Income ofYear(long value, int year, IncomeType incomeType) {
+    OffsetDateTime monthStart =
+        OffsetDateTime.of(
+            LocalDate.of(year, Month.JANUARY, 1),
+            LocalTime.MIN,
+            OffsetDateTime.now(ZoneOffset.UTC).getOffset());
+    OffsetDateTime monthEnd =
+        OffsetDateTime.of(
+            LocalDate.of(year, Month.DECEMBER, 1).with(TemporalAdjusters.lastDayOfMonth()),
+            LocalTime.MAX,
+            OffsetDateTime.now(ZoneOffset.UTC).getOffset());
+    return new Income(value, incomeType, monthStart, monthEnd);
+  }
+
   public static Income zero(int year, Month month) {
     OffsetDateTime monthStart =
         OffsetDateTime.of(

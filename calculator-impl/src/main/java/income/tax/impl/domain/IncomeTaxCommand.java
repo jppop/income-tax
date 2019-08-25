@@ -1,19 +1,17 @@
 package income.tax.impl.domain;
 
-import income.tax.api.Income;
-import income.tax.api.IncomeType;
-import income.tax.impl.tools.DateUtils;
-import lombok.NonNull;
-import lombok.Value;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.google.common.base.Preconditions;
 import com.lightbend.lagom.javadsl.persistence.PersistentEntity;
 import com.lightbend.lagom.serialization.CompressedJsonable;
 import com.lightbend.lagom.serialization.Jsonable;
-
-import akka.Done;
+import income.tax.api.Contributions;
+import income.tax.api.Income;
+import income.tax.api.IncomeType;
+import income.tax.impl.tools.DateUtils;
+import lombok.NonNull;
+import lombok.Value;
 
 import java.time.OffsetDateTime;
 
@@ -35,7 +33,7 @@ public interface IncomeTaxCommand extends Jsonable {
   @SuppressWarnings("serial")
   @Value
   @JsonDeserialize
-  final class Register implements IncomeTaxCommand, CompressedJsonable, PersistentEntity.ReplyType<Done> {
+  final class Register implements IncomeTaxCommand, CompressedJsonable, PersistentEntity.ReplyType<Contributions> {
     public final @NonNull String contributorId;
     public final @NonNull OffsetDateTime registrationDate;
     public final @NonNull Income previousYearlyIncome;
@@ -54,7 +52,7 @@ public interface IncomeTaxCommand extends Jsonable {
       OffsetDateTime lastYear = registrationDate.minusYears(1);
       OffsetDateTime lastYearStart = DateUtils.minFirstDayOfYear.apply(lastYear);
       OffsetDateTime lastYearEnd = DateUtils.maxLastDayOfYear.apply(lastYear);
-      this.previousYearlyIncome = new Income(previousYearlyIncome, incomeType, lastYearStart, lastYearStart);
+      this.previousYearlyIncome = new Income(previousYearlyIncome, incomeType, lastYearStart, lastYearEnd);
     }
   }
 
@@ -67,15 +65,19 @@ public interface IncomeTaxCommand extends Jsonable {
   @SuppressWarnings("serial")
   @Value
   @JsonDeserialize
-    final class ApplyIncome implements IncomeTaxCommand, PersistentEntity.ReplyType<Done> {
+    final class ApplyIncome implements IncomeTaxCommand, PersistentEntity.ReplyType<Contributions> {
 
     public final @NonNull String contributorId;
     public final @NonNull Income income;
+    public final boolean scaleToEnd;
+    public final boolean dryRun;
 
     @JsonCreator
-    public ApplyIncome(String contributorId, Income income) {
+    public ApplyIncome(String contributorId, Income income, boolean scaleToEnd, boolean dryRun) {
       this.contributorId = Preconditions.checkNotNull(contributorId, "contributorId");
       this.income = Preconditions.checkNotNull(income, "income");
+      this.scaleToEnd = scaleToEnd;
+      this.dryRun = dryRun;
     }
   }
 

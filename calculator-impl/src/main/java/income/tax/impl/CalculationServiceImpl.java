@@ -1,16 +1,12 @@
 package income.tax.impl;
 
-import akka.Done;
 import akka.japi.Pair;
 import com.lightbend.lagom.javadsl.api.ServiceCall;
 import com.lightbend.lagom.javadsl.api.broker.Topic;
 import com.lightbend.lagom.javadsl.broker.TopicProducer;
 import com.lightbend.lagom.javadsl.persistence.PersistentEntityRef;
 import com.lightbend.lagom.javadsl.persistence.PersistentEntityRegistry;
-import income.tax.api.CalculationEvent;
-import income.tax.api.CalculationService;
-import income.tax.api.Contributor;
-import income.tax.api.Income;
+import income.tax.api.*;
 import income.tax.impl.domain.IncomeTaxCommand;
 import income.tax.impl.domain.IncomeTaxEntity;
 import income.tax.impl.domain.IncomeTaxEvent;
@@ -31,7 +27,7 @@ public class CalculationServiceImpl implements CalculationService {
   }
 
   @Override
-  public ServiceCall<Contributor, Done> register() {
+  public ServiceCall<RegistrationRequest, Contributions> register() {
     return contributor -> {
       // Look up the IncomeTax entity for the given ID.
       PersistentEntityRef<IncomeTaxCommand> ref =
@@ -45,12 +41,12 @@ public class CalculationServiceImpl implements CalculationService {
   }
 
   @Override
-  public ServiceCall<Income, Done> applyIncome(String contributorId) {
+  public ServiceCall<Income, Contributions> applyIncome(String contributorId, boolean scaleToEnd, boolean dryRun) {
     return income -> {
       // Look up the IncomeTax entity for the given ID.
       PersistentEntityRef<IncomeTaxCommand> ref = persistentEntityRegistry.refFor(IncomeTaxEntity.class, contributorId);
-      // Tell the entity to use the greeting message specified.
-      return ref.ask(new IncomeTaxCommand.ApplyIncome(contributorId, income));
+      // Tell the entity to apply the income.
+      return ref.ask(new IncomeTaxCommand.ApplyIncome(contributorId, income, scaleToEnd, dryRun));
     };
   }
 
@@ -71,8 +67,13 @@ public class CalculationServiceImpl implements CalculationService {
           if (eventAndOffset.first() instanceof IncomeTaxEvent.Registered) {
             IncomeTaxEvent.Registered registered = (IncomeTaxEvent.Registered) eventAndOffset.first();
             eventToPublish = new CalculationEvent.Registered(
-                registered.getContributorId(), registered.getRegistrationDate(),
+                registered.contributorId, registered.registrationDate,
                 registered.previousYearlyIncome.income, registered.previousYearlyIncome.incomeType);
+          } else if (eventAndOffset.first() instanceof IncomeTaxEvent.IncomeApplied) {
+            IncomeTaxEvent.IncomeApplied incomeApplied = (IncomeTaxEvent.IncomeApplied) eventAndOffset.first();
+            eventToPublish =
+                new CalculationEvent.IncomeApplied(
+                    incomeApplied.contributorId, incomeApplied.income);
           } else {
             throw new IllegalArgumentException("Unknown event: " + eventAndOffset.first());
           }

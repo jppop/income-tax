@@ -55,11 +55,11 @@ public class CalculationServiceTest {
 
       service.register().invoke(
           new RegistrationRequest("#contributorId", registrationDate, lastYerIncome, incomeType)
-      ).toCompletableFuture().get(30, SECONDS);
+      ).toCompletableFuture().get(5, SECONDS);
 
       // Act
       PSequence<Contributor> contributors = service.getContributors().invoke()
-          .toCompletableFuture().get(30, SECONDS);
+          .toCompletableFuture().get(5, SECONDS);
 
       // Assert
       Assertions.assertThat(contributors)

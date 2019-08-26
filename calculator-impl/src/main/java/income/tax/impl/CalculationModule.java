@@ -5,6 +5,8 @@ import com.google.inject.multibindings.MapBinder;
 import com.lightbend.lagom.javadsl.server.ServiceGuiceSupport;
 import income.tax.api.CalculationService;
 import income.tax.calculator.Calculator;
+import income.tax.impl.readside.ContributionRepository;
+import income.tax.impl.readside.ContributionRepositoryCassandraImpl;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -16,6 +18,7 @@ public class CalculationModule extends AbstractModule implements ServiceGuiceSup
   @Override
   protected void configure() {
     bindService(CalculationService.class, CalculationServiceImpl.class);
+    bind(ContributionRepository.class).to(ContributionRepositoryCassandraImpl.class);
 
     // get Calculator implementations
     Map<Integer, Calculator> implementations = loadCalculators();

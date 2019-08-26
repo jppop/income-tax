@@ -100,13 +100,11 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
      * Event handler for the Registered event.
      */
     b.setEventHandler(IncomeTaxEvent.Registered.class,
-        // Start with a new state before registration time as if incomes already exist,
-        // then mutate it as if a new year begins
+        // update the contributor id and the registration date
         evt -> IncomeTaxState.of(evt.contributorId, true, evt.registrationDate));
 
     b.setEventHandler(IncomeTaxEvent.ContributionScheduleStarted.class,
-        // Start with a new state before registration time as if incomes already exist,
-        // then mutate it as if a new year begins
+        // initialize the contribution schedule
         evt -> state().with(IncomeAdjusters.beforeRegistration(evt.previousYearlyIncome)));
 
     /*

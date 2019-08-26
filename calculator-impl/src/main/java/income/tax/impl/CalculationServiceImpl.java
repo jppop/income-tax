@@ -1,15 +1,20 @@
 package income.tax.impl;
 
+import akka.NotUsed;
 import akka.japi.Pair;
 import com.lightbend.lagom.javadsl.api.ServiceCall;
 import com.lightbend.lagom.javadsl.api.broker.Topic;
 import com.lightbend.lagom.javadsl.broker.TopicProducer;
 import com.lightbend.lagom.javadsl.persistence.PersistentEntityRef;
 import com.lightbend.lagom.javadsl.persistence.PersistentEntityRegistry;
+import com.lightbend.lagom.javadsl.persistence.ReadSide;
 import income.tax.api.*;
 import income.tax.impl.domain.IncomeTaxCommand;
 import income.tax.impl.domain.IncomeTaxEntity;
 import income.tax.impl.domain.IncomeTaxEvent;
+import income.tax.impl.readside.ContributionRepository;
+import income.tax.impl.readside.EventStreamProcessor;
+import org.pcollections.PSequence;
 
 import javax.inject.Inject;
 
@@ -19,11 +24,15 @@ import javax.inject.Inject;
 public class CalculationServiceImpl implements CalculationService {
 
   private final PersistentEntityRegistry persistentEntityRegistry;
+  private final ContributionRepository repository;
 
   @Inject
-  public CalculationServiceImpl(PersistentEntityRegistry persistentEntityRegistry) {
+  public CalculationServiceImpl(PersistentEntityRegistry persistentEntityRegistry, ReadSide readSide, ContributionRepository repository) {
     this.persistentEntityRegistry = persistentEntityRegistry;
+    this.repository = repository;
+
     persistentEntityRegistry.register(IncomeTaxEntity.class);
+    readSide.register(EventStreamProcessor.class);
   }
 
   @Override
@@ -38,6 +47,11 @@ public class CalculationServiceImpl implements CalculationService {
           contributor.previousYearlyIncome, contributor.incomeType));
     };
 
+  }
+
+  @Override
+  public ServiceCall<NotUsed, PSequence<Contributor>> getContributors() {
+    return request -> repository.findContributors();
   }
 
   @Override
@@ -74,6 +88,11 @@ public class CalculationServiceImpl implements CalculationService {
             eventToPublish =
                 new CalculationEvent.IncomeApplied(
                     incomeApplied.contributorId, incomeApplied.income);
+          } else if (eventAndOffset.first() instanceof IncomeTaxEvent.ContributionScheduleStarted) {
+            IncomeTaxEvent.ContributionScheduleStarted incomeApplied = (IncomeTaxEvent.ContributionScheduleStarted) eventAndOffset.first();
+            eventToPublish =
+                new CalculationEvent.IncomeApplied(
+                    incomeApplied.contributorId, incomeApplied.previousYearlyIncome);
           } else {
             throw new IllegalArgumentException("Unknown event: " + eventAndOffset.first());
           }

@@ -1,10 +1,12 @@
 package income.tax.api;
 
+import akka.NotUsed;
 import com.lightbend.lagom.javadsl.api.Descriptor;
 import com.lightbend.lagom.javadsl.api.Service;
 import com.lightbend.lagom.javadsl.api.ServiceCall;
 import com.lightbend.lagom.javadsl.api.broker.Topic;
 import com.lightbend.lagom.javadsl.api.broker.kafka.KafkaProperties;
+import org.pcollections.PSequence;
 
 import static com.lightbend.lagom.javadsl.api.Service.*;
 
@@ -31,7 +33,10 @@ public interface CalculationService extends Service {
    */
   ServiceCall<RegistrationRequest, Contributions> register();
 
+  ServiceCall<NotUsed, PSequence<Contributor>> getContributors();
+
   ServiceCall<Income, Contributions> applyIncome(String contributorId, boolean scaleToEnd, boolean dryRun);
+
   /**
    * This gets published to Kafka.
    */
@@ -42,6 +47,7 @@ public interface CalculationService extends Service {
     // @formatter:off
     return named("calculation").withCalls(
         pathCall("/api/contributors", this::register),
+        pathCall("/api/contributors", this::getContributors),
         pathCall("/api/contributions/:contributorId/declare?dryRun&scaleToEnd", this::applyIncome)
     ).withTopics(
         topic("calculation-events", this::calculationEvents)

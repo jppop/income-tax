@@ -1,16 +1,11 @@
 package income.tax.impl.readside;
 
-import akka.Done;
-import akka.japi.Pair;
-import akka.stream.javadsl.Flow;
 import com.lightbend.lagom.javadsl.persistence.AggregateEventTag;
-import com.lightbend.lagom.javadsl.persistence.Offset;
 import com.lightbend.lagom.javadsl.persistence.ReadSideProcessor;
 import income.tax.impl.domain.IncomeTaxEvent;
 import org.pcollections.PSequence;
 
 import javax.inject.Inject;
-import java.util.concurrent.CompletionStage;
 
 public class EventStreamProcessor extends ReadSideProcessor<IncomeTaxEvent> {
 

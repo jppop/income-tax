@@ -35,6 +35,15 @@
         <groupId>com.lightbend.lagom</groupId>
         <artifactId>lagom-maven-plugin</artifactId>
         <version>${lagom.version}</version>
+<!--
+        <configuration>
+          <cassandraYamlFile>${basedir}/dev-embedded-cassandra.yaml</cassandraYamlFile>
+          <unmanagedServices>
+            <cas_native>http://localhost:9042</cas_native>
+          </unmanagedServices>
+          <cassandraEnabled>false</cassandraEnabled>
+        </configuration>
+-->
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -115,4 +124,24 @@
     </dependencies>
   </dependencyManagement>
 
+  <profiles>
+    <profile>
+      <id>cas-native</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>com.lightbend.lagom</groupId>
+            <artifactId>lagom-maven-plugin</artifactId>
+            <version>${lagom.version}</version>
+            <configuration>
+              <unmanagedServices>
+                <cas_native>http://localhost:9042</cas_native>
+              </unmanagedServices>
+              <cassandraEnabled>false</cassandraEnabled>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

@@ -4,6 +4,7 @@ import com.lightbend.lagom.javadsl.persistence.PersistentEntity;
 import income.tax.api.Contributions;
 import income.tax.api.Income;
 import income.tax.calculator.Contribution;
+import income.tax.impl.IncomeTaxException;
 import income.tax.impl.domain.IncomeTaxCommand.ApplyIncome;
 import income.tax.impl.domain.IncomeTaxCommand.Register;
 import income.tax.impl.domain.IncomeTaxEvent.Registered;
@@ -68,7 +69,7 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
       // Registered event
       log.debug("processing command {}", cmd);
       if (state().isRegistered) {
-        ctx.invalidCommand(Messages.E_ALREADY_REGISTERED.get(state().contributorId));
+        ctx.commandFailed(new IncomeTaxException(Messages.E_ALREADY_REGISTERED.get(state().contributorId)));
         return ctx.done();
       }
       final Income yearlyIncome = IncomeUtils.scaleToFullYear(cmd.previousYearlyIncome);
@@ -83,9 +84,9 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
 
     b.setCommandHandler(IncomeTaxCommand.ApplyIncome.class, (cmd, ctx) -> {
       log.debug("processing command {}", cmd);
-      Optional<String> possibleError = checkIncomeCommandArguments(cmd);
-      if (possibleError.isPresent()) {
-        ctx.invalidCommand(possibleError.get());
+      Optional<String> maybeError = checkIncomeCommandArguments(cmd);
+      if (maybeError.isPresent()) {
+        ctx.commandFailed(new IncomeTaxException(maybeError.get()));
         return ctx.done();
       }
       Income income = cmd.scaleToEnd ? IncomeUtils.scaleToEndOfYear(cmd.income) : cmd.income;

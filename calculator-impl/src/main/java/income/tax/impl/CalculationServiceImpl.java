@@ -4,8 +4,8 @@ import akka.NotUsed;
 import akka.japi.Pair;
 import com.lightbend.lagom.javadsl.api.ServiceCall;
 import com.lightbend.lagom.javadsl.api.broker.Topic;
+import com.lightbend.lagom.javadsl.api.transport.BadRequest;
 import com.lightbend.lagom.javadsl.broker.TopicProducer;
-import com.lightbend.lagom.javadsl.persistence.PersistentEntityRef;
 import com.lightbend.lagom.javadsl.persistence.PersistentEntityRegistry;
 import com.lightbend.lagom.javadsl.persistence.ReadSide;
 import income.tax.api.*;
@@ -17,6 +17,7 @@ import income.tax.impl.readside.EventStreamProcessor;
 import org.pcollections.PSequence;
 
 import javax.inject.Inject;
+import java.util.concurrent.CompletionStage;
 
 /**
  * Implementation of the HelloService.
@@ -37,16 +38,12 @@ public class CalculationServiceImpl implements CalculationService {
 
   @Override
   public ServiceCall<RegistrationRequest, Contributions> register() {
-    return contributor -> {
-      // Look up the IncomeTax entity for the given ID.
-      PersistentEntityRef<IncomeTaxCommand> ref =
-          persistentEntityRegistry.refFor(IncomeTaxEntity.class, contributor.contributorId);
-      // Tell the entity to use the greeting message specified.
-      return ref.ask(new IncomeTaxCommand.Register(
-          contributor.contributorId, contributor.registrationDate,
-          contributor.previousYearlyIncome, contributor.incomeType));
-    };
-
+    return contributor ->
+        convertErrors(
+            persistentEntityRegistry.refFor(IncomeTaxEntity.class, contributor.contributorId)
+                .ask(new IncomeTaxCommand.Register(
+                    contributor.contributorId, contributor.registrationDate,
+                    contributor.previousYearlyIncome, contributor.incomeType)));
   }
 
   @Override
@@ -56,12 +53,10 @@ public class CalculationServiceImpl implements CalculationService {
 
   @Override
   public ServiceCall<Income, Contributions> applyIncome(String contributorId, boolean scaleToEnd, boolean dryRun) {
-    return income -> {
-      // Look up the IncomeTax entity for the given ID.
-      PersistentEntityRef<IncomeTaxCommand> ref = persistentEntityRegistry.refFor(IncomeTaxEntity.class, contributorId);
-      // Tell the entity to apply the income.
-      return ref.ask(new IncomeTaxCommand.ApplyIncome(contributorId, income, scaleToEnd, dryRun));
-    };
+    return income ->
+        convertErrors(
+            persistentEntityRegistry.refFor(IncomeTaxEntity.class, contributorId)
+                .ask(new IncomeTaxCommand.ApplyIncome(contributorId, income, scaleToEnd, dryRun)));
   }
 
   @Override
@@ -102,5 +97,15 @@ public class CalculationServiceImpl implements CalculationService {
           return Pair.create(eventToPublish, eventAndOffset.second());
         })
     );
+  }
+
+  private <T> CompletionStage<T> convertErrors(CompletionStage<T> future) {
+    return future.exceptionally(ex -> {
+      if (ex instanceof IncomeTaxException) {
+        throw new BadRequest(ex.getMessage());
+      } else {
+        throw new BadRequest(ex);
+      }
+    });
   }
 }

@@ -3,7 +3,7 @@ package income.tax.impl.domain;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.google.common.base.Preconditions;
-import income.tax.calculator.Contribution;
+import income.tax.contribution.api.Contribution;
 import lombok.NonNull;
 import lombok.Value;
 import org.pcollections.HashTreePMap;

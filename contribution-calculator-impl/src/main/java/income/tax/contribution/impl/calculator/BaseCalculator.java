@@ -1,15 +1,16 @@
-package income.tax.impl.contribution;
+package income.tax.contribution.impl.calculator;
 
-import income.tax.calculator.CalculationConstantProvider;
-import income.tax.calculator.Calculator;
-import income.tax.calculator.Contribution;
+import income.tax.contribution.impl.CalculationConstantProvider;
+import income.tax.contribution.impl.Calculator;
+import income.tax.contribution.impl.ContributionInternal;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
+import java.time.Month;
 import java.util.*;
 
-import static income.tax.impl.contribution.BaseCalculator.ContributionType.*;
+import static income.tax.contribution.impl.calculator.BaseCalculator.ContributionType.*;
 
 public abstract class BaseCalculator implements Calculator, CalculationConstantProvider {
 
@@ -61,37 +62,40 @@ public abstract class BaseCalculator implements Calculator, CalculationConstantP
   }
 
   @Override
-  public Map<String, Contribution> compute(BigDecimal income, boolean round) {
-    Map<String, Contribution> contributions = new LinkedHashMap<>();
+  public Map<String, ContributionInternal> computeFromYearlyIncome(BigDecimal income, boolean round) {
+    Map<String, ContributionInternal> contributions = new LinkedHashMap<>();
 
     for (ContributionType type: contributionToBeComputed) {
-      Contribution contribution = compute(income, round, type.code());
-      contributions.put(contribution.type, contribution);
+      ContributionInternal contributionInternal = compute(income, round, type.code());
+      contributions.put(contributionInternal.type, contributionInternal);
     }
 
     return contributions;
   }
 
   @Override
-  public Map<String, Contribution> computeFromMonthlyIncome(BigDecimal income, boolean round) {
-    Map<String, Contribution> contributions = new LinkedHashMap<>();
+  public Map<String, ContributionInternal>
+  computeFromMonthlyIncome(
+      Month month, BigDecimal income, boolean round, Optional<Map<String, Object>> additionalArgs) {
+
+    Map<String, ContributionInternal> contributions = new LinkedHashMap<>();
     final BigDecimal monthCount = BigDecimal.valueOf(12);
-    Map<String, Contribution> yearlyContributions = compute(income.multiply(monthCount), round);
-    for (Map.Entry<String, Contribution> entry : yearlyContributions.entrySet()) {
-      Contribution yearlyContribution = entry.getValue();
+    Map<String, ContributionInternal> yearlyContributions = computeFromYearlyIncome(income.multiply(monthCount), round);
+    for (Map.Entry<String, ContributionInternal> entry : yearlyContributions.entrySet()) {
+      ContributionInternal yearlyContributionInternal = entry.getValue();
       contributions.put(
           entry.getKey(),
-          Contribution.of(
-              yearlyContribution.type,
-              yearlyContribution.income.divide(monthCount, mc),
-              yearlyContribution.baseIncome.divide(monthCount, mc),
-              yearlyContribution.rate,
-              yearlyContribution.contribution.divide(monthCount, mc)));
+          ContributionInternal.of(
+              yearlyContributionInternal.type,
+              yearlyContributionInternal.income.divide(monthCount, mc),
+              yearlyContributionInternal.baseIncome.divide(monthCount, mc),
+              yearlyContributionInternal.rate,
+              yearlyContributionInternal.contribution.divide(monthCount, mc)));
     }
     return contributions;
   }
 
-  private Contribution compute(BigDecimal income, boolean round, String code) {
+  private ContributionInternal compute(BigDecimal income, boolean round, String code) {
     ContributionConfig contributionConfig = contributionConfigs.get(code);
     BigDecimal baseIncome = contributionConfig.baseIncomeCalculator.compute(income);
     BigDecimal contributionAmount = contributionConfig.compute(income);
@@ -105,7 +109,7 @@ public abstract class BaseCalculator implements Calculator, CalculationConstantP
     } else {
       rate = contributionAmount.divide(baseIncome, mc).scaleByPowerOfTen(2).setScale(2, RoundingMode.CEILING);
     }
-    return Contribution.of(code, income, baseIncome, rate, contributionAmount);
+    return ContributionInternal.of(code, income, baseIncome, rate, contributionAmount);
   }
 
   @Override

@@ -18,11 +18,13 @@
   </properties>
 
   <modules>
+    <module>contribution-calculator-api</module>
     <module>calculator-api</module>
     <module>calculator-impl</module>
     <module>stream-api</module>
     <module>stream-impl</module>
     <module>integration-tests</module>
+    <module>contribution-calculator-impl</module>
   </modules>
 
   <build>
@@ -54,6 +56,9 @@
           <target>1.8</target>
           <compilerArgs>
             <arg>-parameters</arg>
+            <arg>-Xlint:unchecked</arg>
+            <arg>-Xlint:deprecation</arg>
+            <arg>-Werror</arg>
           </compilerArgs>
         </configuration>
       </plugin>

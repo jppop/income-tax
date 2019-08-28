@@ -1,4 +1,4 @@
-package income.tax.impl.contribution;
+package income.tax.contribution.impl.calculator;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;

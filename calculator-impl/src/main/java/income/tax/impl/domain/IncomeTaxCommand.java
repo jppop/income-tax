@@ -9,10 +9,13 @@ import com.lightbend.lagom.serialization.Jsonable;
 import income.tax.api.Contributions;
 import income.tax.api.Income;
 import income.tax.api.IncomeType;
+import income.tax.contribution.api.Contribution;
 import income.tax.impl.tools.DateUtils;
 import lombok.NonNull;
 import lombok.Value;
+import org.pcollections.PMap;
 
+import java.time.Month;
 import java.time.OffsetDateTime;
 
 /**
@@ -37,17 +40,20 @@ public interface IncomeTaxCommand extends Jsonable {
     public final @NonNull String contributorId;
     public final @NonNull OffsetDateTime registrationDate;
     public final @NonNull Income previousYearlyIncome;
+    public final PMap<Month, PMap<String, Contribution>> contributions;
 
     @JsonCreator
-    public Register(@NonNull String contributorId, @NonNull OffsetDateTime registrationDate, Income previousYearlyIncome) {
+    public Register(@NonNull String contributorId, @NonNull OffsetDateTime registrationDate, Income previousYearlyIncome, PMap<Month, PMap<String, Contribution>> contributions) {
       this.contributorId = Preconditions.checkNotNull(contributorId, "contributorId");
       this.registrationDate = Preconditions.checkNotNull(registrationDate, "registrationDate");
       this.previousYearlyIncome = Preconditions.checkNotNull(previousYearlyIncome, "previousYearlyIncome");
+      this.contributions = contributions;
     }
 
-    public Register(String contributorId, OffsetDateTime registrationDate, long previousYearlyIncome, IncomeType incomeType) {
+    public Register(String contributorId, OffsetDateTime registrationDate, long previousYearlyIncome, IncomeType incomeType, PMap<Month, PMap<String, Contribution>> contributions) {
       this.contributorId = Preconditions.checkNotNull(contributorId, "name");
       this.registrationDate = Preconditions.checkNotNull(registrationDate, "registrationDate");
+      this.contributions = contributions;
       Preconditions.checkNotNull(incomeType, "incomeType");
       OffsetDateTime lastYear = registrationDate.minusYears(1);
       OffsetDateTime lastYearStart = DateUtils.minFirstDayOfYear.apply(lastYear);
@@ -71,13 +77,15 @@ public interface IncomeTaxCommand extends Jsonable {
     public final @NonNull Income income;
     public final boolean scaleToEnd;
     public final boolean dryRun;
+    public final PMap<Month, PMap<String, Contribution>> contributions;
 
     @JsonCreator
-    public ApplyIncome(String contributorId, Income income, boolean scaleToEnd, boolean dryRun) {
+    public ApplyIncome(String contributorId, Income income, boolean scaleToEnd, boolean dryRun, PMap<Month, PMap<String, Contribution>> contributions) {
       this.contributorId = Preconditions.checkNotNull(contributorId, "contributorId");
       this.income = Preconditions.checkNotNull(income, "income");
       this.scaleToEnd = scaleToEnd;
       this.dryRun = dryRun;
+      this.contributions = Preconditions.checkNotNull(contributions);
     }
   }
 

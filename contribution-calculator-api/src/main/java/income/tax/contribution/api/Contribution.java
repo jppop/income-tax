@@ -1,4 +1,4 @@
-package income.tax.api;
+package income.tax.contribution.api;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;

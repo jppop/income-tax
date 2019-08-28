@@ -1,18 +1,20 @@
-package income.tax.calculator;
+package income.tax.contribution.impl;
 
 import lombok.Value;
 
 import java.math.BigDecimal;
+import java.time.Month;
 import java.util.Map;
+import java.util.Optional;
 
 public interface Calculator {
 
   int getYear();
   BigDecimal round(BigDecimal value);
 
-  Map<String, Contribution> compute(BigDecimal income, boolean round);
+  Map<String, ContributionInternal> computeFromYearlyIncome(BigDecimal income, boolean round);
 
-  Map<String, Contribution> computeFromMonthlyIncome(BigDecimal income, boolean round);
+  Map<String, ContributionInternal> computeFromMonthlyIncome(Month month, BigDecimal income, boolean round, Optional<Map<String, Object>> additionalArgs);
 
   @FunctionalInterface
   interface IncomeBasedCalculator {

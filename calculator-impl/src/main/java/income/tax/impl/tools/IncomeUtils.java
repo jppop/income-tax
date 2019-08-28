@@ -1,6 +1,7 @@
 package income.tax.impl.tools;
 
 import income.tax.api.Income;
+import income.tax.api.IncomeType;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -16,6 +17,13 @@ public class IncomeUtils {
     return scaleToFullYear(income, income.start.getYear());
   }
 
+  public static Income yearIncome(long income, int year, IncomeType incomeType) {
+    LocalDate firstDay = LocalDate.of(year, 1, 1);
+    OffsetDateTime firstDayTime = OffsetDateTime.of(firstDay, LocalTime.MIN, ZoneOffset.UTC);
+    OffsetDateTime lastDayTime = OffsetDateTime.of(firstDay.with(TemporalAdjusters.lastDayOfYear()), LocalTime.MAX, ZoneOffset.UTC);
+    return new Income(income, incomeType, firstDayTime, lastDayTime);
+  }
+
   public static Income scaleToFullYear(Income income, int year) {
     LocalDate firstDay = LocalDate.of(year, 1, 1);
     OffsetDateTime firstDayTime = OffsetDateTime.of(firstDay, LocalTime.MIN, ZoneOffset.UTC);
@@ -24,7 +32,15 @@ public class IncomeUtils {
   }
 
   public static Income scaleToEndOfYear(Income income) {
-    return scale(income, income.start, income.end.with(TemporalAdjusters.lastDayOfYear()));
+    return scale(
+        income,
+        DateUtils.minFirstDayOfMonth.apply(income.start), income.end.with(TemporalAdjusters.lastDayOfYear()));
+  }
+
+  public static Income toCompleteMonths(Income income) {
+    OffsetDateTime start = DateUtils.minFirstDayOfMonth.apply(income.start);
+    OffsetDateTime end = DateUtils.maxLastDayOfMonth.apply(income.start);
+    return new Income(income.income, income.incomeType, start, end);
   }
 
   private static Income scale(Income income, OffsetDateTime start, OffsetDateTime end) {

@@ -63,7 +63,7 @@ public abstract class Utf8ResourceBundle {
 
     @Override
     @SuppressWarnings({"unchecked", "rawtypes"})
-    public Enumeration getKeys() {
+    public Enumeration<String> getKeys() {
       return bundle.getKeys();
     }
 

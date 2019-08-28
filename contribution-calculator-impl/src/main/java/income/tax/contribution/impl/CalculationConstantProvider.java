@@ -1,4 +1,4 @@
-package income.tax.calculator;
+package income.tax.contribution.impl;
 
 import java.math.BigDecimal;
 

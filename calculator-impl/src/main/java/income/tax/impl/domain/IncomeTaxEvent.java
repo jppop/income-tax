@@ -9,8 +9,11 @@ import com.lightbend.lagom.javadsl.persistence.AggregateEventTag;
 import com.lightbend.lagom.javadsl.persistence.AggregateEventTagger;
 import com.lightbend.lagom.serialization.Jsonable;
 import income.tax.api.Income;
+import income.tax.contribution.api.Contribution;
 import lombok.Value;
+import org.pcollections.PMap;
 
+import java.time.Month;
 import java.time.OffsetDateTime;
 
 /**
@@ -71,12 +74,14 @@ public interface IncomeTaxEvent extends Jsonable, AggregateEvent<IncomeTaxEvent>
     public final String contributorId;
     public final OffsetDateTime createdAt;
     public final Income income;
+    public final PMap<Month, PMap<String, Contribution>> contributions;
 
     @JsonCreator
-    public IncomeApplied(String contributorId, Income income, OffsetDateTime createdAt) {
+    public IncomeApplied(String contributorId, Income income, OffsetDateTime createdAt, PMap<Month, PMap<String, Contribution>> contributions) {
       this.contributorId = Preconditions.checkNotNull(contributorId, "contributorId");
       this.income = Preconditions.checkNotNull(income, "income");
       this.createdAt = Preconditions.checkNotNull(createdAt, "createdAt");
+      this.contributions = contributions;
     }
   }
 

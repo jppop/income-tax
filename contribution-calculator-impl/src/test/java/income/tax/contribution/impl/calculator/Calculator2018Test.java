@@ -1,27 +1,30 @@
-package income.tax.impl.contribution;
+package income.tax.contribution.impl.calculator;
 
+import income.tax.contribution.impl.Calculator;
+import income.tax.contribution.impl.ContributionInternal;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Month;
 import java.util.Map;
 import java.util.Optional;
 
-import static income.tax.calculator.Calculator.ContributionConfig;
-import static income.tax.impl.contribution.BaseCalculator.ContributionType.*;
+import static income.tax.contribution.impl.calculator.BaseCalculator.ContributionType.*;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
-class Calculator2019Test {
+class Calculator2018Test {
 
-  private static final BigDecimal pass = new BigDecimal("40524");
-  private static final BigDecimal prci = new BigDecimal("37960");
+  private static final BigDecimal pass = new BigDecimal("39732");
+  private static final BigDecimal prci = new BigDecimal("37846");
   private static final BigDecimal passX4 = pass.multiply(BigDecimal.valueOf(4));
   private static final BigDecimal passX5 = pass.multiply(BigDecimal.valueOf(5));
   private static final BigDecimal pass40percent = pass.multiply(new BigDecimal("0.4"));
   private static final BigDecimal pass0115 = pass.multiply(new BigDecimal("0.115"));
   private static final BigDecimal pass110 = pass.multiply(new BigDecimal("1.1"));
-  private Calculator2019 calculator = new Calculator2019();
-  private Map<String, ContributionConfig> contributionConfigs = calculator.contributionConfigs();
+  private Calculator2018 calculator = new Calculator2018();
+  private Map<String, Calculator.ContributionConfig> contributionConfigs = calculator.contributionConfigs();
 
   @Test
   public void highIncome() {
@@ -35,14 +38,14 @@ class Calculator2019Test {
     // MLD1T2: Maladie 1 T2 pour la tranche des revenus supérieurs à 5 x PASS
     rate = new BigDecimal("6.50");
     baseIncome = income.subtract(passX5);
-    expectedContribution = new BigDecimal("2429.70");
-    compute(Maladie1T2.code(), income, rate, baseIncome, expectedContribution, "2430");
+    expectedContribution = new BigDecimal("2687.10");
+    compute(Maladie1T2.code(), income, rate, baseIncome, expectedContribution, "2687");
 
     // MLD1T1: Maladie 1 T1 pour la tranche des revenus inférieurs à 5 x PASS
     rate = new BigDecimal("6.35");
     baseIncome = passX5;
-    expectedContribution = new BigDecimal("12866.37");
-    compute(Maladie1T1.code(), income, rate, baseIncome, expectedContribution, "12866");
+    expectedContribution = new BigDecimal("12614.91");
+    compute(Maladie1T1.code(), income, rate, baseIncome, expectedContribution, "12614");
 
     // MAL1: Maladie 1 T1 + T2
 //    rate = new BigDecimal("1"); // not significant
@@ -53,20 +56,20 @@ class Calculator2019Test {
     // MAL2
     rate = new BigDecimal("0.85");
     baseIncome = passX5;
-    expectedContribution = new BigDecimal("1722.27");
-    compute(Maladie2.code(), income, rate, baseIncome, expectedContribution, "1722");
+    expectedContribution = new BigDecimal("1688.61");
+    compute(Maladie2.code(), income, rate, baseIncome, expectedContribution, "1688");
 
     // RVB T1
     rate = new BigDecimal("17.75"); // not significant
     baseIncome = pass;
-    expectedContribution = new BigDecimal("7193.01");
-    compute(RetraiteT1.code(), income, rate, baseIncome, expectedContribution, "7193");
+    expectedContribution = new BigDecimal("7052.43");
+    compute(RetraiteT1.code(), income, rate, baseIncome, expectedContribution, "7052");
 
     // RVB T2
     rate = new BigDecimal("0.60"); // not significant
     baseIncome = income.subtract(pass);
-    expectedContribution = new BigDecimal("1196.86");
-    compute(RetraiteT2.code(), income, rate, baseIncome, expectedContribution, "1197");
+    expectedContribution = new BigDecimal("1201.61");
+    compute(RetraiteT2.code(), income, rate, baseIncome, expectedContribution, "1201");
 
     // RVB
 //    rate = new BigDecimal("1"); // not significant
@@ -77,14 +80,14 @@ class Calculator2019Test {
     // RCI T1
     rate = new BigDecimal("7.00");
     baseIncome = prci;
-    expectedContribution = new BigDecimal("2657.20");
-    compute(RetraiteComplémentaireT1.code(), income, rate, baseIncome, expectedContribution, "2657");
+    expectedContribution = new BigDecimal("2649.22");
+    compute(RetraiteComplémentaireT1.code(), income, rate, baseIncome, expectedContribution, "2649");
 
     // RCI T2
     rate = new BigDecimal("8.00");
     baseIncome = passX4.subtract(prci);
-    expectedContribution = new BigDecimal("9930.88");
-    compute(RetraiteComplémentaireT2.code(), income, rate, baseIncome, expectedContribution, "9931");
+    expectedContribution = new BigDecimal("9686.56");
+    compute(RetraiteComplémentaireT2.code(), income, rate, baseIncome, expectedContribution, "9686");
 
     // RCI
 //    rate = new BigDecimal("1"); // not significant
@@ -95,8 +98,8 @@ class Calculator2019Test {
     // RID
     rate = new BigDecimal("1.30");
     baseIncome = pass;
-    expectedContribution = new BigDecimal("526.82");
-    compute(InvalidititéDécès.code(), income, rate, baseIncome, expectedContribution, "527");
+    expectedContribution = new BigDecimal("516.52");
+    compute(InvalidititéDécès.code(), income, rate, baseIncome, expectedContribution, "516");
 
     // AF
     rate = new BigDecimal("3.10");
@@ -128,10 +131,10 @@ class Calculator2019Test {
     compute(Maladie1T2.code(), income, rate, baseIncome, expectedContribution);
 
     // MLD1T1: Maladie 1 T1 pour la tranche des revenus inférieurs à 5 x PASS
-    rate = new BigDecimal("4.03");
+    rate = new BigDecimal("4.08");
     baseIncome = income;
-    expectedContribution = new BigDecimal("959.61");
-    compute(Maladie1T1.code(), income, rate, baseIncome, expectedContribution, "960");
+    expectedContribution = new BigDecimal("972.32");
+    compute(Maladie1T1.code(), income, rate, baseIncome, expectedContribution, "972");
 
     // MAL1: Maladie 1 T1 + T2
 //    rate = new BigDecimal("1"); // not significant
@@ -143,7 +146,7 @@ class Calculator2019Test {
     rate = new BigDecimal("0.85");
     baseIncome = income;
     expectedContribution = new BigDecimal("202.68");
-    compute(Maladie2.code(), income, rate, baseIncome, expectedContribution, "203");
+    compute(Maladie2.code(), income, rate, baseIncome, expectedContribution, "202");
 
     // RVB T1
     rate = new BigDecimal("17.75");
@@ -185,7 +188,7 @@ class Calculator2019Test {
     rate = new BigDecimal("1.30");
     baseIncome = income;
     expectedContribution = new BigDecimal("309.98");
-    compute(InvalidititéDécès.code(), income, rate, baseIncome, expectedContribution, "310");
+    compute(InvalidititéDécès.code(), income, rate, baseIncome, expectedContribution, "309");
 
     // AF
     rate = BigDecimal.ZERO.setScale(2); // R < 110% * PASS
@@ -217,10 +220,10 @@ class Calculator2019Test {
     compute(Maladie1T2.code(), income, rate, baseIncome, expectedContribution, "0");
 
     // MLD1T1: Maladie 1 T1 pour la tranche des revenus inférieurs à 5 x PASS
-    rate = new BigDecimal("2.26");
+    rate = new BigDecimal("2.30");
     baseIncome = pass40percent;
     expectedContribution = new BigDecimal("364.98");
-    compute(Maladie1T1.code(), income, rate, baseIncome, expectedContribution, "365");
+    compute(Maladie1T1.code(), income, rate, baseIncome, expectedContribution, "364");
 
     // MAL1: Maladie 1 T1 + T2
 //    rate = new BigDecimal("1"); // not significant
@@ -231,14 +234,14 @@ class Calculator2019Test {
     // MAL2
     rate = new BigDecimal("0.85");
     baseIncome = pass40percent;
-    expectedContribution = new BigDecimal("137.79");
-    compute(Maladie2.code(), income, rate, baseIncome, expectedContribution, "138");
+    expectedContribution = new BigDecimal("135.09");
+    compute(Maladie2.code(), income, rate, baseIncome, expectedContribution, "135");
 
     // RVB T1
     rate = new BigDecimal("17.75");
     baseIncome = income;
     expectedContribution = new BigDecimal("2044.80");
-    compute(RetraiteT1.code(), income, rate, baseIncome, expectedContribution, "2045");
+    compute(RetraiteT1.code(), income, rate, baseIncome, expectedContribution, "2044");
 
     // RVB T2
     rate = new BigDecimal("0.60");
@@ -262,7 +265,7 @@ class Calculator2019Test {
     rate = new BigDecimal("1.30");
     baseIncome = income;
     expectedContribution = new BigDecimal("149.76");
-    compute(InvalidititéDécès.code(), income, rate, baseIncome, expectedContribution, "150");
+    compute(InvalidititéDécès.code(), income, rate, baseIncome, expectedContribution, "149");
 
     // AF
     rate = BigDecimal.ZERO.setScale(2); // R < 110% * PASS
@@ -276,6 +279,79 @@ class Calculator2019Test {
     baseIncome = income.multiply(csgRate);
     expectedContribution = new BigDecimal("1564.42");
     compute(CSG_CRDS.code(), income, rate, baseIncome, expectedContribution, "1564");
+  }
+
+  @Test
+  public void monthBasedCalculation() {
+
+    final BigDecimal monthCount = BigDecimal.valueOf(12);
+    final BigDecimal yearlyIncome = BigDecimal.valueOf(12 * 2000 + 1);
+
+    // yearly income based calculation
+    Map<String, ContributionInternal> yearlyContributions = calculator.computeFromYearlyIncome(yearlyIncome, false);
+    BigDecimal totalYearlyContributions = yearlyContributions.values().stream()
+        .map(contribution -> contribution.contribution)
+        .reduce(BigDecimal.ZERO, (sum, contribution) -> sum.add(contribution));
+
+    BigDecimal monthlyIncome = yearlyIncome.divide(monthCount, 8, RoundingMode.CEILING);
+    Map<String, ContributionInternal> monthlyContributions = calculator.computeFromYearlyIncome(monthlyIncome.multiply(monthCount), false);
+    BigDecimal totalMonthlyContributions = monthlyContributions.values().stream()
+        .map(contribution -> contribution.contribution)
+        .reduce(BigDecimal.ZERO, (sum, contribution) -> sum.add(contribution));
+
+    assertThat(totalYearlyContributions).isCloseTo(totalMonthlyContributions, within(new BigDecimal("0.01")));
+  }
+
+  @Test
+  public void monthBasedCalculation2() {
+
+    final BigDecimal monthCount = BigDecimal.valueOf(12);
+    final BigDecimal monthlyIncome = new BigDecimal("24000");
+
+    // monthly income based calculation
+    Map<String, ContributionInternal> monthlyContributions =
+        calculator.computeFromMonthlyIncome(Month.JANUARY, monthlyIncome, false, Optional.empty());
+    BigDecimal totalMonthlyContributions = monthlyContributions.values().stream()
+        .map(contribution -> contribution.contribution)
+        .reduce(BigDecimal.ZERO, (sum, contribution) -> sum.add(contribution));
+
+    BigDecimal yearlyIncome = monthlyIncome.multiply(monthCount);
+    Map<String, ContributionInternal> yearlyContributions = calculator.computeFromYearlyIncome(yearlyIncome, false);
+    BigDecimal totalYearlyContributions = yearlyContributions.values().stream()
+        .map(contribution -> contribution.contribution)
+        .reduce(BigDecimal.ZERO, (sum, contribution) -> sum.add(contribution));
+
+    assertThat(totalMonthlyContributions.multiply(monthCount))
+        .isCloseTo(totalYearlyContributions, within(new BigDecimal("0.001")));
+  }
+
+  static class MonthCalculator2018 extends BaseCalculator {
+
+    public MonthCalculator2018() {
+      super(RoundingMode.DOWN, new BigDecimal("3311"), new BigDecimal("3153.833333333333333"), new BigDecimal("1.4"));
+    }
+
+    @Override
+    public int getYear() {
+      return 2018;
+    }
+  }
+  @Test
+  public void monthBasedCalculation3() {
+
+    MonthCalculator2018 monthCalculator2018 = new MonthCalculator2018();
+    Map<String, Calculator.ContributionConfig> contributionConfigs = monthCalculator2018.contributionConfigs();
+    final BigDecimal monthCount = BigDecimal.valueOf(12);
+    final BigDecimal monthlyIncome = new BigDecimal("24000");
+
+    // monthly income based calculation
+    Map<String, ContributionInternal> monthlyContributions =
+        monthCalculator2018.computeFromMonthlyIncome(Month.APRIL, monthlyIncome, false, Optional.empty());
+    BigDecimal totalMonthlyContributions = monthlyContributions.values().stream()
+        .map(contribution -> contribution.contribution)
+        .reduce(BigDecimal.ZERO, (sum, contribution) -> sum.add(contribution));
+
+    System.out.println("total contributions: " + totalMonthlyContributions);
   }
 
   private void compute(String code, BigDecimal income,
@@ -293,7 +369,7 @@ class Calculator2019Test {
                        BigDecimal expectedRate, BigDecimal expectedBaseIncome, BigDecimal expectedContribution,
                        Optional<String> mayBeRoundedUpValue) {
 
-    ContributionConfig contributionConfig = contributionConfigs.get(code);
+    Calculator.ContributionConfig contributionConfig = contributionConfigs.get(code);
     assertThat(contributionConfig).as(code).isNotNull();
 
     BigDecimal actualRate = contributionConfig.rateCalculator.compute(income).setScale(2, RoundingMode.CEILING);

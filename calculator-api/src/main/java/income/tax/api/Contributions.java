@@ -2,6 +2,7 @@ package income.tax.api;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import income.tax.contribution.api.Contribution;
 import lombok.NonNull;
 import lombok.Value;
 

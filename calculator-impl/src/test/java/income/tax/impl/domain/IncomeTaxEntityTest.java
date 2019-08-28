@@ -7,7 +7,9 @@ import com.lightbend.lagom.javadsl.testkit.PersistentEntityTestDriver.Outcome;
 import income.tax.api.Contributions;
 import income.tax.api.Income;
 import income.tax.api.IncomeType;
+import income.tax.impl.tools.IncomeUtils;
 import org.junit.jupiter.api.*;
+import org.pcollections.HashTreePMap;
 import org.pcollections.PMap;
 
 import java.time.*;
@@ -82,12 +84,12 @@ class IncomeTaxEntityTest {
 
     // Act
     Outcome<IncomeTaxEvent, IncomeTaxState> outcome =
-        driver.run(new IncomeTaxCommand.Register(entityId, registrationDate, previousYearlyIncome));
+        driver.run(new IncomeTaxCommand.Register(entityId, registrationDate, previousYearlyIncome, HashTreePMap.empty()));
 
     // Assert
     assertThat(outcome.events()).hasSize(2);
     assertThat(outcome.events().get(0)).isEqualTo(new IncomeTaxEvent.Registered(entityId, registrationDate, previousYearlyIncome));
-    assertThat(outcome.events().get(1)).isEqualTo(new IncomeTaxEvent.ContributionScheduleStarted(entityId, previousYearlyIncome));
+    assertThat(outcome.events().get(1)).isInstanceOf(IncomeTaxEvent.IncomeApplied.class);
     assertThat(outcome.state().contributorId).isEqualTo(entityId);
     assertThat(outcome.state().registeredDate).isEqualTo(registrationDate);
     assertThat(outcome.state().previousYearlyIncomes)
@@ -116,10 +118,10 @@ class IncomeTaxEntityTest {
     Income monthlyIncome =
         new Income(1500, IncomeType.estimated,
             minFirstDayOfMonth.apply(month), maxLastDayOfMonth.apply(month));
-//    Income incomeToTheEndOfYear = IncomeUtils.scaleToEndOfYear(monthlyIncome);
+    Income incomeToTheEndOfYear = IncomeUtils.scaleToEndOfYear(monthlyIncome);
 
     Outcome<IncomeTaxEvent, IncomeTaxState> outcome =
-        driver.run(new IncomeTaxCommand.ApplyIncome(contributorId, monthlyIncome, true, false));
+        driver.run(new IncomeTaxCommand.ApplyIncome(contributorId, incomeToTheEndOfYear, true, false, HashTreePMap.empty()));
 
     // Assert
     assertThat(outcome.events()).hasSize(1);
@@ -155,16 +157,20 @@ class IncomeTaxEntityTest {
     OffsetDateTime registrationDate = incomeTaxState.registeredDate;
     Income previousYearlyIncome = incomeTaxState.previousYearlyIncomes.get(registrationDate.getYear() - 1);
     PMap<Month, Income> currentIncomes = incomeTaxState.currentIncomes;
+    long previousQuaterIncome = currentIncomes.values().stream()
+        .filter(income -> 7 <= income.start.getMonthValue() && income.start.getMonthValue() <= 9)
+        .mapToLong(Income::getIncome).sum();
 
     // Act
+    // apply income from july to september
     LocalDate start = LocalDate.of(incomeTaxState.contributionYear, Month.JULY, 1);
     LocalDate end = start.plusMonths(2);
     Income quarterIncome =
-        new Income(2000 + (3 * LASTYEAR_MONTH_INCOME), IncomeType.estimated,
+        new Income(2000L + previousQuaterIncome, IncomeType.estimated,
             minFirstDayOfMonthFromDate.apply(start), maxLastDayOfMonthFromDate.apply(end));
 
     Outcome<IncomeTaxEvent, IncomeTaxState> outcome =
-        driver.run(new IncomeTaxCommand.ApplyIncome(contributorId, quarterIncome, false, false));
+        driver.run(new IncomeTaxCommand.ApplyIncome(contributorId, quarterIncome, false, false, HashTreePMap.empty()));
 
     // Assert
     assertThat(outcome.events()).hasSize(1);
@@ -217,10 +223,23 @@ class IncomeTaxEntityTest {
     OffsetDateTime lastYearStart = minFirstDayOfYear.apply(lastYear);
     OffsetDateTime lastYearEnd = maxLastDayOfYear.apply(lastYear);
     Income previousYearlyIncome = new Income(12 * LASTYEAR_MONTH_INCOME, IncomeType.estimated, lastYearStart, lastYearEnd);
-//    Map<Month, Income> currentIncomes = yearlyIncome(registrationYear, 1000, 1000, 1000, 1210, 1220, 1230, 1310, 1320, 1330, 1410, 1420, 1430);
+    Map<Month, Income> currentIncomes = yearlyIncome(registrationYear,
+        LASTYEAR_MONTH_INCOME, LASTYEAR_MONTH_INCOME, LASTYEAR_MONTH_INCOME,
+        quaterIncome(4), quaterIncome(5), quaterIncome(6),
+        quaterIncome(7), quaterIncome(8), quaterIncome(9),
+        quaterIncome(10), quaterIncome(11), quaterIncome(12)
+    );
     return
-        IncomeTaxState.of(contributorId, true, registrationDate)
-            .with(IncomeAdjusters.beforeRegistration(previousYearlyIncome));
+        IncomeTaxState.of(contributorId, true, registrationDate, previousYearlyIncome)
+            .modifier().withNewCurrentIncomes(currentIncomes)
+            .modify();
 
+  }
+
+  static private long quaterIncome(int month) {
+    int quarter = ((month - 1)/ 3) + 1;
+    int monthOfQuarter = (month - 1) % 3;
+    int income = 1100 + (100 * quarter) + (10 * monthOfQuarter);
+    return income;
   }
 }

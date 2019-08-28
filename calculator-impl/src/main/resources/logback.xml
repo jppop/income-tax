@@ -3,7 +3,8 @@
 
   <statusListener class="ch.qos.logback.core.status.OnConsoleStatusListener"/>
 
-  <property name="logDir" value="${project.build.directory}"/>
+  <property name="logDir" value="${log.dir:-/tmp/logs}"/>
+  <property name="service.name" value="income-tax" />
 
   <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
     <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
@@ -15,7 +16,7 @@
   </appender>
 
   <appender name="FILE" class="ch.qos.logback.core.FileAppender">
-    <file>${logDir}/debug.log</file>
+    <file>${logDir}/debug-${service.name}.log</file>
     <append>true</append>
     <!-- set immediateFlush to false for much higher logging throughput -->
     <immediateFlush>true</immediateFlush>

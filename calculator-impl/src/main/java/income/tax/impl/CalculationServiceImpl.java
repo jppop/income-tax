@@ -5,6 +5,8 @@ import akka.japi.Pair;
 import com.lightbend.lagom.javadsl.api.ServiceCall;
 import com.lightbend.lagom.javadsl.api.broker.Topic;
 import com.lightbend.lagom.javadsl.api.transport.BadRequest;
+import com.lightbend.lagom.javadsl.api.transport.TransportErrorCode;
+import com.lightbend.lagom.javadsl.api.transport.TransportException;
 import com.lightbend.lagom.javadsl.broker.TopicProducer;
 import com.lightbend.lagom.javadsl.persistence.PersistentEntityRegistry;
 import com.lightbend.lagom.javadsl.persistence.ReadSide;
@@ -194,7 +196,7 @@ public class CalculationServiceImpl implements CalculationService {
       if (ex instanceof IncomeTaxException) {
         throw new BadRequest(ex.getMessage());
       } else {
-        throw new BadRequest(ex);
+        throw new TransportException(TransportErrorCode.InternalServerError, "Unexpected error", ex);
       }
     });
   }

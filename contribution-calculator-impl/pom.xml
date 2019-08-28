@@ -34,24 +34,14 @@
       <groupId>com.lightbend.lagom</groupId>
       <artifactId>lagom-javadsl-akka-discovery-service-locator_${scala.binary.version}</artifactId>
     </dependency>
-    <!--
-        <dependency>
-          <groupId>com.lightbend.lagom</groupId>
-          <artifactId>lagom-javadsl-persistence-cassandra_${scala.binary.version}</artifactId>
-        </dependency>
-        <dependency>
-          <groupId>com.lightbend.lagom</groupId>
-          <artifactId>lagom-javadsl-kafka-client_${scala.binary.version}</artifactId>
-        </dependency>
-    -->
+    <dependency>
+      <groupId>com.lightbend.lagom</groupId>
+      <artifactId>lagom-javadsl-persistence-cassandra_${scala.binary.version}</artifactId>
+    </dependency>
 
     <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>ch.qos.logback</groupId>
-      <artifactId>logback-classic</artifactId>
     </dependency>
     <dependency>
       <groupId>org.pcollections</groupId>
@@ -68,7 +58,6 @@
       <artifactId>junit-jupiter-engine</artifactId>
       <scope>test</scope>
     </dependency>
-<!--
     <dependency>
       <groupId>com.lightbend.lagom</groupId>
       <artifactId>lagom-javadsl-testkit_${scala.binary.version}</artifactId>
@@ -80,7 +69,6 @@
         </exclusion>
       </exclusions>
     </dependency>
--->
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-params</artifactId>
@@ -99,6 +87,18 @@
   </dependencies>
 
   <build>
+    <resources>
+      <resource>
+        <directory>${project.basedir}/src/main/resources</directory>
+        <filtering>true</filtering>
+      </resource>
+    </resources>
+    <testResources>
+      <testResource>
+        <directory>${project.basedir}/src/test/resources</directory>
+        <filtering>true</filtering>
+      </testResource>
+    </testResources>
     <plugins>
       <plugin>
         <groupId>com.lightbend.lagom</groupId>

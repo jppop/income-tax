@@ -10,6 +10,7 @@ import com.lightbend.lagom.javadsl.persistence.cassandra.CassandraSession;
 import income.tax.api.Contributor;
 import income.tax.contribution.api.Contribution;
 import income.tax.impl.domain.IncomeTaxEvent;
+import income.tax.impl.message.Messages;
 import org.pcollections.HashTreePMap;
 import org.pcollections.PMap;
 import org.pcollections.PSequence;
@@ -41,6 +42,7 @@ public class ContributionRepositoryCassandraImpl implements ContributionReposito
   private static final UnaryOperator<String> regionFromContributorId = id -> id.length() > 3 ? id.substring(0, 3) : "???";
   private final CassandraSession session;
   private final CassandraReadSide readSide;
+  private final String keyspace = "tax_calculation";
   private PreparedStatement writeContributors; // initialized in prepareStatement
   private PreparedStatement writeContributions; // initialized in prepareStatement
   private UserType contributionUdtType;  // initialized in prepareStatement
@@ -181,6 +183,16 @@ public class ContributionRepositoryCassandraImpl implements ContributionReposito
       logger.info("Creating schema..");
       logger.info("Schema creation statements: {}", batch.getStatements());
       batch.getStatements().forEach(underlyingSession::execute);
+
+      // keep around UDT type definition for later use when writing contributions
+      // TODO: Configuration should be injected to get the keyspace name
+
+      final KeyspaceMetadata keySpace = underlyingSession.getCluster().getMetadata()
+          .getKeyspace(keyspace);
+      if (keySpace == null) {
+        throw new IllegalStateException(Messages.E_CASSANDRA_NO_KEYSPACE.get(keyspace));
+      }
+      this.contributionUdtType = keySpace.getUserType("contribution");
       return Done.getInstance();
     });
   }
@@ -203,20 +215,12 @@ public class ContributionRepositoryCassandraImpl implements ContributionReposito
   }
 
   private CompletionStage<Done> prepareWriteContributions() {
-    CompletionStage<Done> getMetaData = session.underlying().thenApply(underlyingSession -> {
-      // keep around UDT type definition for later use when writing contributions
-      // TODO: Configuration should be injected to get the keyspace name
-      this.contributionUdtType =
-          underlyingSession.getCluster().getMetadata()
-              .getKeyspace("tax_calculation").getUserType("contribution");
-      return Done.getInstance();
-    });
-    return getMetaData.thenCompose(done -> session.prepare(
+    return session.prepare(
         "INSERT INTO contributions (contributor_id, region, year, month, contributions)" +
             " VALUES (?, ?, ?, ?, ?)")
         .thenApply(ps -> {
           this.writeContributions = ps;
           return Done.getInstance();
-        }));
+        });
   }
 }

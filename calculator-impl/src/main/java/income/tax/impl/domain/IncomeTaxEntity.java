@@ -124,6 +124,7 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
     return OffsetDateTime.now(ZoneOffset.UTC);
   }
 
+  // FIXME: should be done in the service layer
   private Contributions contributionsFrom(
       String contributorId, int year, PMap<Month, Income> currentIncomes, PMap<Month, PMap<String, Contribution>> yearlyContributions) {
 

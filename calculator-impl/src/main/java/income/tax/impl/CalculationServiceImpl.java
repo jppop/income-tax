@@ -8,6 +8,7 @@ import com.lightbend.lagom.javadsl.api.transport.BadRequest;
 import com.lightbend.lagom.javadsl.api.transport.TransportErrorCode;
 import com.lightbend.lagom.javadsl.api.transport.TransportException;
 import com.lightbend.lagom.javadsl.broker.TopicProducer;
+import com.lightbend.lagom.javadsl.persistence.PersistentEntityRef;
 import com.lightbend.lagom.javadsl.persistence.PersistentEntityRegistry;
 import com.lightbend.lagom.javadsl.persistence.ReadSide;
 import income.tax.api.*;
@@ -24,6 +25,8 @@ import income.tax.impl.tools.IncomeUtils;
 import org.pcollections.HashTreePMap;
 import org.pcollections.PMap;
 import org.pcollections.PSequence;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.math.BigDecimal;
@@ -32,6 +35,7 @@ import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -40,6 +44,8 @@ import java.util.stream.Collectors;
  * Implementation of the HelloService.
  */
 public class CalculationServiceImpl implements CalculationService {
+
+  private static Logger logger = LoggerFactory.getLogger(CalculationServiceImpl.class);
 
   private final PersistentEntityRegistry persistentEntityRegistry;
   private final ContributionRepository repository;
@@ -81,40 +87,55 @@ public class CalculationServiceImpl implements CalculationService {
 
   private CompletionStage<Contributions>
   doRegister(String contributorId, OffsetDateTime registrationDate, long previousYearlyIncome, IncomeType incomeType) {
-    int year = registrationDate.getYear();
-    // apply income before registration to the current year (ie, the registration year)
-    // scale income to a full year
-    Income yearlyIncome = IncomeUtils.yearIncome(previousYearlyIncome, year, incomeType);
 
-    // spread out income over every month
-    Map<Month, Income> spreadIncome = IncomeUtils.spreadOutOverMonths(yearlyIncome);
+    CompletableFuture<IncomeTaxCommand.Register> getCommand = CompletableFuture.supplyAsync(() -> {
+      int year = registrationDate.getYear();
+      // apply income before registration to the current year (ie, the registration year)
+      // scale income to a full year
+      Income yearlyIncome = IncomeUtils.yearIncome(previousYearlyIncome, year, incomeType);
 
-    // compute contribution for each months
-    final PMap<Month, PMap<String, Contribution>> calculatedContributions = getContributions(year, spreadIncome);
+      // spread out income over every month
+      Map<Month, Income> spreadIncome = IncomeUtils.spreadOutOverMonths(yearlyIncome);
 
-    return persistentEntityRegistry.refFor(IncomeTaxEntity.class, contributorId)
-        .ask(new IncomeTaxCommand.Register(
-            contributorId, registrationDate,
-            previousYearlyIncome, incomeType,
-            calculatedContributions));
+      // compute contribution for each months
+      final PMap<Month, PMap<String, Contribution>> calculatedContributions = getContributions(year, spreadIncome);
+
+      return new IncomeTaxCommand.Register(
+          contributorId, registrationDate,
+          previousYearlyIncome, incomeType, calculatedContributions
+      );
+    });
+
+    return getCommand.thenCompose(cmd -> entityRef(contributorId).ask(cmd));
+  }
+
+  private PersistentEntityRef<IncomeTaxCommand> entityRef(String contributorId) {
+    return persistentEntityRegistry.refFor(IncomeTaxEntity.class, contributorId);
   }
 
   private CompletionStage<Contributions>
   doApplyIncome(String contributorId, Income income, boolean scaleToEnd, boolean dryRun) {
 
-    int year = income.start.getYear();
+    CompletableFuture<IncomeTaxCommand.ApplyIncome> getCommand = CompletableFuture.supplyAsync(() -> {
+      logger.debug("Applying income for #{}: {}", contributorId, income);
+      int year = income.start.getYear();
 
-    // scale income or adjust to complete month
-    Income normalizedIncomeIncome = normalizeIncome(income, scaleToEnd);
+      // scale income or adjust to complete month
+      Income normalizedIncomeIncome = normalizeIncome(income, scaleToEnd);
+      logger.debug("Normalized income for #{}: {}", contributorId, normalizedIncomeIncome);
 
-    // spread income over months
-    Map<Month, Income> spreadIncome = IncomeUtils.spreadOutOverMonths(normalizedIncomeIncome);
+      // spread income over months
+      PMap<Month, Income> spreadIncome = HashTreePMap.from(IncomeUtils.spreadOutOverMonths(normalizedIncomeIncome));
+      logger.debug("Spread out income for #{}: {}", contributorId, spreadIncome);
 
-    // compute contribution for each months
-    final PMap<Month, PMap<String, Contribution>> calculatedContributions = getContributions(year, spreadIncome);
+      // compute contribution for each months
+      final PMap<Month, PMap<String, Contribution>> calculatedContributions = getContributions(year, spreadIncome);
+      logger.debug("Contributions for #{}: {}", contributorId, calculatedContributions);
 
-    return persistentEntityRegistry.refFor(IncomeTaxEntity.class, contributorId)
-        .ask(new IncomeTaxCommand.ApplyIncome(contributorId, normalizedIncomeIncome, scaleToEnd, dryRun, calculatedContributions));
+      return new IncomeTaxCommand.ApplyIncome(contributorId, normalizedIncomeIncome, scaleToEnd, dryRun, calculatedContributions);
+    });
+
+    return getCommand.thenCompose(applyIncome -> entityRef(contributorId).ask(applyIncome));
   }
 
   private PMap<Month, PMap<String, Contribution>> getContributions(int year, Map<Month, Income> incomes) {
@@ -130,16 +151,9 @@ public class CalculationServiceImpl implements CalculationService {
     });
 
     Map<Month, PMap<String, Contribution>> allContributions = futures.entrySet().stream()
-        .collect(Collectors.toMap(e -> e.getKey(), e -> HashTreePMap.from(e.getValue().join())));
+        .collect(Collectors.toMap(Map.Entry::getKey, e -> HashTreePMap.from(e.getValue().join())));
     return HashTreePMap.from(allContributions);
 
-//    CompletableFuture<Void> voidCompletableFuture = CompletableFuture.allOf(futures.values().toArray(new CompletableFuture[futures.size()]));
-//    CompletableFuture<Map<Month, Map<String, Contribution>>> allCompletableFuture = voidCompletableFuture.thenApply(future ->
-//        futures.entrySet().stream()
-//            .collect(Collectors.toMap(e -> e.getKey(), e -> e.getValue().join())));
-//
-//    return allCompletableFuture.thenApply(monthContribution ->
-//        monthContribution.entrySet().stream().collect(Collectors.toMap(e -> e.getKey(), e -> e.getValue())));
   }
 
   @Override
@@ -195,6 +209,8 @@ public class CalculationServiceImpl implements CalculationService {
     return future.exceptionally(ex -> {
       if (ex instanceof IncomeTaxException) {
         throw new BadRequest(ex.getMessage());
+      } else if ((ex instanceof CompletionException) && (ex.getCause() != null) && (ex.getCause() instanceof IncomeTaxException)) {
+        throw new BadRequest(ex.getCause().getMessage());
       } else {
         throw new TransportException(TransportErrorCode.InternalServerError, "Unexpected error", ex);
       }

@@ -48,7 +48,7 @@ public interface CalculationService extends Service {
     return named("calculation").withCalls(
         pathCall("/api/contributors", this::register),
         pathCall("/api/contributors", this::getContributors),
-        pathCall("/api/contributions/:contributorId/declare?dryRun&scaleToEnd", this::applyIncome)
+        pathCall("/api/contributions/:contributorId/declare?scaleToEnd&dryRun", this::applyIncome)
     ).withTopics(
         topic("calculation-events", this::calculationEvents)
             // Kafka partitions messages, messages within the same partition will

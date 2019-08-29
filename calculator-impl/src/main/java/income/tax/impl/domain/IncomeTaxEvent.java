@@ -58,18 +58,6 @@ public interface IncomeTaxEvent extends Jsonable, AggregateEvent<IncomeTaxEvent>
   }
 
   @Value
-  final class ContributionScheduleStarted implements IncomeTaxEvent {
-    public final String contributorId;
-    public final Income previousYearlyIncome;
-
-    @JsonCreator
-    public ContributionScheduleStarted(String contributorId, Income previousYearlyIncome) {
-      this.contributorId = Preconditions.checkNotNull(contributorId, "contributorId");
-      this.previousYearlyIncome = Preconditions.checkNotNull(previousYearlyIncome, "previousYearlyIncome");
-    }
-  }
-
-  @Value
   final class IncomeApplied implements IncomeTaxEvent {
     public final String contributorId;
     public final OffsetDateTime createdAt;

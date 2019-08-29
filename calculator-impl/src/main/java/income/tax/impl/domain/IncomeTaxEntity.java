@@ -92,6 +92,16 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
             Messages.E_NOT_CURRENT_CONTRIBUTION_YEAR.get(cmd.income.start, cmd.income.end, state().contributionYear)));
         return ctx.done();
       }
+      if (cmd.dryRun) {
+        IncomeTaxState newStateNotPeristed = state().modifier()
+            .withNewIncome(cmd.income)
+            .withNewContributions(cmd.contributions)
+            .modify();
+        ctx.reply(contributionsFrom(
+            newStateNotPeristed.contributorId, newStateNotPeristed.contributionYear, newStateNotPeristed.currentIncomes, newStateNotPeristed.contributions.contributions
+        ));
+        return ctx.done();
+      }
       return ctx.thenPersist(new IncomeTaxEvent.IncomeApplied(entityId(), cmd.income, now(), cmd.contributions),
           // Then once the event is successfully persisted, we respond with calculated contributions.
           evt -> contributionsFrom(

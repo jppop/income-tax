@@ -186,6 +186,7 @@ public class CalculationServiceImpl implements CalculationService {
 
           // We return a pair of the translated event, and its offset, so that
           // Lagom can track which offsets have been published.
+          logger.debug("Publishing {}", eventToPublish);
           return Pair.create(eventToPublish, eventAndOffset.second());
         })
     );

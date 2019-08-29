@@ -7,11 +7,15 @@ import com.lightbend.lagom.javadsl.testkit.PersistentEntityTestDriver.Outcome;
 import income.tax.api.Contributions;
 import income.tax.api.Income;
 import income.tax.api.IncomeType;
+import income.tax.contribution.api.Contribution;
 import income.tax.impl.tools.IncomeUtils;
 import org.junit.jupiter.api.*;
 import org.pcollections.HashTreePMap;
 import org.pcollections.PMap;
 
+import java.math.BigDecimal;
+import java.math.MathContext;
+import java.math.RoundingMode;
 import java.time.*;
 import java.time.temporal.TemporalAdjusters;
 import java.util.HashMap;
@@ -19,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static com.lightbend.lagom.javadsl.testkit.PersistentEntityTestDriver.NoSerializer;
 import static income.tax.impl.tools.DateUtils.*;
@@ -27,7 +32,7 @@ import static org.assertj.core.api.Assertions.entry;
 
 class IncomeTaxEntityTest {
 
-  public static final int LASTYEAR_MONTH_INCOME = 1000;
+  private static final int LASTYEAR_MONTH_INCOME = 1000;
   private static final String ENTITY_ID = "#ContributorId";
   private static ActorSystem system;
 
@@ -42,6 +47,13 @@ class IncomeTaxEntityTest {
   public static void teardown() {
     TestKit.shutdownActorSystem(system);
     system = null;
+  }
+
+  static private long quaterIncome(int month) {
+    int quarter = ((month - 1) / 3) + 1;
+    int monthOfQuarter = (month - 1) % 3;
+    int income = 1100 + (100 * quarter) + (10 * monthOfQuarter);
+    return income;
   }
 
   @BeforeEach
@@ -119,9 +131,10 @@ class IncomeTaxEntityTest {
         new Income(1500, IncomeType.estimated,
             minFirstDayOfMonth.apply(month), maxLastDayOfMonth.apply(month));
     Income incomeToTheEndOfYear = IncomeUtils.scaleToEndOfYear(monthlyIncome);
+    final PMap<Month, PMap<String, Contribution>> contributions = getContributions(IncomeUtils.spreadOutOverMonths(incomeToTheEndOfYear));
 
     Outcome<IncomeTaxEvent, IncomeTaxState> outcome =
-        driver.run(new IncomeTaxCommand.ApplyIncome(contributorId, incomeToTheEndOfYear, true, false, HashTreePMap.empty()));
+        driver.run(new IncomeTaxCommand.ApplyIncome(contributorId, incomeToTheEndOfYear, true, false, contributions));
 
     // Assert
     assertThat(outcome.events()).hasSize(1);
@@ -210,6 +223,8 @@ class IncomeTaxEntityTest {
     return yearlyIncomes;
   }
 
+  final static MathContext mc = new MathContext(8, RoundingMode.HALF_DOWN);
+
   private IncomeTaxState initialState(String contributorId, int registrationYear) {
 
     OffsetDateTime registrationDate =
@@ -229,17 +244,33 @@ class IncomeTaxEntityTest {
         quaterIncome(7), quaterIncome(8), quaterIncome(9),
         quaterIncome(10), quaterIncome(11), quaterIncome(12)
     );
+
+    final PMap<Month, PMap<String, Contribution>> contributions = getContributions(currentIncomes);
     return
         IncomeTaxState.of(contributorId, true, registrationDate, previousYearlyIncome)
-            .modifier().withNewCurrentIncomes(currentIncomes)
+            .modifier()
+            .withNewCurrentIncomes(currentIncomes)
+            .withNewContributions(contributions)
             .modify();
 
   }
 
-  static private long quaterIncome(int month) {
-    int quarter = ((month - 1)/ 3) + 1;
-    int monthOfQuarter = (month - 1) % 3;
-    int income = 1100 + (100 * quarter) + (10 * monthOfQuarter);
-    return income;
+  private PMap<Month, PMap<String, Contribution>> getContributions(Map<Month, Income> currentIncomes) {
+    final Map<Month, PMap<String, Contribution>> contributions = new HashMap<>();
+    currentIncomes.forEach((month, income) -> {
+      Map<String, Contribution> calculatedContributions =
+          IntStream.rangeClosed(1, 5)
+              .mapToObj(index -> {
+                String contributionType = String.format("MOCK%03d", index);
+                BigDecimal incomeValue = BigDecimal.valueOf(income.income);
+                BigDecimal baseIncome = incomeValue.multiply(new BigDecimal("0.75"));
+                BigDecimal rate = new BigDecimal("0.075");
+                BigDecimal contribution = baseIncome.multiply(rate, mc);
+                return new Contribution(contributionType, incomeValue, baseIncome, rate, contribution);
+              })
+              .collect(Collectors.toMap(Contribution::getType, contribution -> contribution));
+      contributions.put(month, HashTreePMap.from(calculatedContributions));
+    });
+    return HashTreePMap.from(contributions);
   }
 }

@@ -19,6 +19,7 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
@@ -53,6 +54,7 @@ public class ContributionRepositoryCassandraImpl implements ContributionReposito
     builder.setGlobalPrepare(this::ensureTables);
     builder.setPrepare(tag -> prepareStatements());
     builder.setEventHandler(IncomeTaxEvent.Registered.class, this::processRegistered);
+    builder.setEventHandler(IncomeTaxEvent.IncomeApplied.class, this::processIncomeApplied);
     return builder.build();
   }
 
@@ -92,6 +94,11 @@ public class ContributionRepositoryCassandraImpl implements ContributionReposito
     return completedStatements(Arrays.asList(bindWriteContributor));
   }
 
+  private CompletionStage<List<BoundStatement>> processIncomeApplied(IncomeTaxEvent.IncomeApplied event) {
+    logger.debug("record income and contributions: {}", event);
+    return completedStatements(Collections.emptyList());
+
+  }
   private CompletionStage<Done> ensureTables() {
 
     final CreateType createTypeStmt = createType("contribution")

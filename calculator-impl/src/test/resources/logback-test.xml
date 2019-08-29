@@ -3,7 +3,7 @@
 
   <statusListener class="ch.qos.logback.core.status.OnConsoleStatusListener"/>
 
-  <property name="logDir" value="${project.build.directory}"/>
+  <property name="logDir" value="${project.build.directory}/logs"/>
 
   <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
     <filter class="ch.qos.logback.classic.filter.ThresholdFilter">

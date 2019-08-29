@@ -19,12 +19,12 @@
 
   <modules>
     <module>contribution-calculator-api</module>
+    <module>contribution-calculator-impl</module>
     <module>calculator-api</module>
     <module>calculator-impl</module>
     <module>stream-api</module>
     <module>stream-impl</module>
     <module>integration-tests</module>
-    <module>contribution-calculator-impl</module>
   </modules>
 
   <build>
@@ -50,7 +50,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.5.1</version>
+        <version>3.8.0</version>
         <configuration>
           <source>1.8</source>
           <target>1.8</target>
@@ -60,6 +60,28 @@
             <arg>-Xlint:deprecation</arg>
             <arg>-Werror</arg>
           </compilerArgs>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>2.22.0</version>
+        <configuration>
+          <argLine>
+            -Xms512M -Xmx2048M -Xss2M -XX:MaxMetaspaceSize=1024M
+          </argLine>
+          <forkCount>1</forkCount>
+          <reuseForks>true</reuseForks>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <version>2.22.0</version>
+        <configuration>
+          <argLine>
+            -Xms512M -Xmx2048M -Xss2M -XX:MaxMetaspaceSize=1024M
+          </argLine>
         </configuration>
       </plugin>
       <plugin>

@@ -15,27 +15,31 @@ import org.pcollections.PSequence;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.Month;
-import java.time.OffsetDateTime;
+import java.time.*;
 import java.util.Collections;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.lightbend.lagom.javadsl.testkit.ServiceTest.*;
+import static income.tax.impl.tools.DateUtils.maxLastDayOfMonth;
+import static income.tax.impl.tools.DateUtils.minFirstDayOfMonth;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 public class CalculationServiceTest {
 
+  public static final String CONTRIBUTOR_ID = "#contributorId";
+  public static final int TIMEOUT = 500;
   private static TestServer server;
 
   @BeforeAll
   public static void setUp() {
     server = startServer(
         defaultSetup()
-            .withCluster(false)
+            .withCluster()
             .withCassandra()
             .configureBuilder(builder -> builder.overrides(bind(CalculatorService.class).to(MockedCalculator.class)))
     );
@@ -64,8 +68,38 @@ public class CalculationServiceTest {
     // Act
     Contributions contributions =
         service.register().invoke(
-            new RegistrationRequest("#contributorId", registrationDate, lastYerIncome, incomeType)
-        ).toCompletableFuture().get(35, SECONDS);
+            new RegistrationRequest(CONTRIBUTOR_ID, registrationDate, lastYerIncome, incomeType)
+        ).toCompletableFuture().get(TIMEOUT, SECONDS);
+
+    // Assert
+    Assertions.assertThat(contributions).isNotNull();
+    System.out.println(contributions);
+  }
+
+  @Test
+  public void shouldApplyIncome() throws Exception {
+    // Arrange
+    CalculationService service = server.client(CalculationService.class);
+
+    String contributorId = UUID.randomUUID().toString();
+    registerContributor(contributorId);
+
+    OffsetDateTime month =
+        OffsetDateTime.of(
+            LocalDate.of(
+                2019, Month.APRIL, 15),
+            LocalTime.NOON,
+            OffsetDateTime.now(ZoneOffset.UTC).getOffset());
+    Income monthlyIncome =
+        new Income(1500, IncomeType.estimated,
+            minFirstDayOfMonth.apply(month), maxLastDayOfMonth.apply(month));
+
+    // Act
+    Contributions contributions =
+        service.applyIncome(contributorId, true, false)
+            .invoke(monthlyIncome)
+            .toCompletableFuture()
+            .get(TIMEOUT, SECONDS);
 
     // Assert
     Assertions.assertThat(contributions).isNotNull();
@@ -78,25 +112,17 @@ public class CalculationServiceTest {
     // Arrange
     CalculationService service = server.client(CalculationService.class);
 
-    OffsetDateTime registrationDate =
-        OffsetDateTime.of(
-            LocalDate.of(2019, Month.APRIL, 12), LocalTime.NOON, OffsetDateTime.now().getOffset());
-
-    long lastYerIncome = (registrationDate.getMonthValue() - 1) * 2000;
-    IncomeType incomeType = IncomeType.estimated;
-
-    service.register().invoke(
-        new RegistrationRequest("#contributorId", registrationDate, lastYerIncome, incomeType)
-    ).toCompletableFuture().get(5, SECONDS);
+    String contributorId = UUID.randomUUID().toString();
+    registerContributor(contributorId);
 
     // Act
     PSequence<Contributor> contributors = service.getContributors().invoke()
-        .toCompletableFuture().get(5, SECONDS);
+        .toCompletableFuture().get(TIMEOUT, SECONDS);
 
     // Assert
     Assertions.assertThat(contributors)
         .extracting("contributorId")
-        .contains("#contributorId");
+        .contains(contributorId);
   }
 
   private static class MockedCalculator implements CalculatorService {
@@ -107,10 +133,10 @@ public class CalculationServiceTest {
     @Override
     public ServiceCall<MonthlyIncomeRequest, Map<String, Contribution>> compute() {
       return monthlyIncomeRequest -> {
-        int contributionIndex = counter.addAndGet(1) % 5;
+        int contributionIndex = counter.addAndGet(1) % TIMEOUT;
         String contributionType = String.format("MOCK%03d", contributionIndex);
         BigDecimal baseIncome = monthlyIncomeRequest.income.multiply(new BigDecimal("0.75"));
-        BigDecimal rate = new BigDecimal("0.75");
+        BigDecimal rate = new BigDecimal("0.075");
         BigDecimal contribution = baseIncome.multiply(rate, mc);
         final Map<String, Contribution> mockedContribution =
             Collections.singletonMap(contributionType,
@@ -120,4 +146,20 @@ public class CalculationServiceTest {
     }
   }
 
+  private Contributions registerContributor(String contributorId) throws InterruptedException, ExecutionException, TimeoutException {
+    OffsetDateTime registrationDate =
+        OffsetDateTime.of(
+            LocalDate.of(2019, Month.APRIL, 12), LocalTime.NOON, OffsetDateTime.now().getOffset());
+
+    long lastYerIncome = (registrationDate.getMonthValue() - 1) * 2000;
+    IncomeType incomeType = IncomeType.estimated;
+
+    CalculationService service = server.client(CalculationService.class);
+    Contributions contributions =
+        service.register().invoke(
+            new RegistrationRequest(contributorId, registrationDate, lastYerIncome, incomeType)
+        ).toCompletableFuture().get(TIMEOUT, SECONDS);
+
+    return contributions;
+  }
 }

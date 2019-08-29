@@ -66,7 +66,7 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
     b.setCommandHandler(Register.class, (cmd, ctx) -> {
       // In response to this command, we want to first persist it as a
       // Registered event
-      log.debug("processing command {}", cmd);
+      log.debug("processing command {} for #{}", cmd.getClass().getSimpleName(), cmd.getContributorId());
       if (state().isRegistered) {
         ctx.commandFailed(new IncomeTaxException(Messages.E_ALREADY_REGISTERED.get(state().contributorId)));
         return ctx.done();
@@ -82,7 +82,7 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
     });
 
     b.setCommandHandler(IncomeTaxCommand.ApplyIncome.class, (cmd, ctx) -> {
-      log.debug("processing command {}", cmd);
+      log.debug("processing command {} for #{}", cmd.getClass().getSimpleName(), cmd.getContributorId());
       if (!state().isRegistered) {
         ctx.commandFailed(new IncomeTaxException(Messages.E_NOT_REGISTERED_YET.get(cmd.contributorId)));
         return ctx.done();
@@ -93,37 +93,44 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
         return ctx.done();
       }
       if (cmd.dryRun) {
-        IncomeTaxState newStateNotPeristed = state().modifier()
+        IncomeTaxState newStateNotPersisted = state().modifier()
             .withNewIncome(cmd.income)
             .withNewContributions(cmd.contributions)
             .modify();
         ctx.reply(contributionsFrom(
-            newStateNotPeristed.contributorId, newStateNotPeristed.contributionYear, newStateNotPeristed.currentIncomes, newStateNotPeristed.contributions.contributions
+            newStateNotPersisted.contributorId, newStateNotPersisted.contributionYear, newStateNotPersisted.currentIncomes, newStateNotPersisted.contributions.contributions
         ));
         return ctx.done();
       }
       return ctx.thenPersist(new IncomeTaxEvent.IncomeApplied(entityId(), cmd.income, now(), cmd.contributions),
           // Then once the event is successfully persisted, we respond with calculated contributions.
-          evt -> contributionsFrom(
-              state().contributorId, state().contributionYear, state().currentIncomes, state().contributions.contributions
-          ));
+          evt -> ctx.reply(
+              contributionsFrom(
+                state().contributorId, state().contributionYear, state().currentIncomes, state().contributions.contributions
+          )));
     });
     /*
      * Event handler for the Registered event.
      */
     b.setEventHandler(IncomeTaxEvent.Registered.class,
         // update the contributor id and the registration date
-        evt -> IncomeTaxState.of(evt.contributorId, true, evt.registrationDate, evt.previousYearlyIncome));
+        evt -> {
+          log.debug("persisted event {} for #{}", evt.getClass().getSimpleName(), evt.contributorId);
+          return IncomeTaxState.of(evt.contributorId, true, evt.registrationDate, evt.previousYearlyIncome);
+        });
 
     /*
      * Event handler for Income application events
      */
     b.setEventHandler(IncomeTaxEvent.IncomeApplied.class,
-        evt ->
-            state().modifier()
-                .withNewIncome(evt.income)
-                .withNewContributions(evt.contributions)
-                .modify());
+        evt -> {
+          log.debug("persisted event {} for #{}", evt.getClass().getSimpleName(), evt.contributorId);
+          return state().modifier()
+              .withNewIncome(evt.income)
+              .withNewContributions(evt.contributions)
+              .modify();
+        });
+
     /*
      * We've defined all our behaviour, so build and return it.
      */

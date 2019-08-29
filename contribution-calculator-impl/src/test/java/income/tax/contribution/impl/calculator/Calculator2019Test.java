@@ -108,8 +108,8 @@ class Calculator2019Test {
     BigDecimal csgRate = calculator.getCalculationConstant("CSG");
     rate = new BigDecimal("9.70");
     baseIncome = income.multiply(csgRate);
-    expectedContribution = new BigDecimal("32592.00");
-    compute(CSG_CRDS.code(), income, rate, baseIncome, expectedContribution, "32592");
+    expectedContribution = new BigDecimal("31428.00");
+    compute(CSG_CRDS.code(), income, rate, baseIncome, expectedContribution, "31428");
   }
 
   @Test
@@ -197,8 +197,8 @@ class Calculator2019Test {
     BigDecimal csgRate = calculator.getCalculationConstant("CSG");
     rate = new BigDecimal("9.70");
     baseIncome = income.multiply(csgRate);
-    expectedContribution = new BigDecimal("3238.02");
-    compute(CSG_CRDS.code(), income, rate, baseIncome, expectedContribution, "3238");
+    expectedContribution = new BigDecimal("3122.38");
+    compute(CSG_CRDS.code(), income, rate, baseIncome, expectedContribution, "3122");
   }
 
   @Test
@@ -274,8 +274,8 @@ class Calculator2019Test {
     BigDecimal csgRate = calculator.getCalculationConstant("CSG");
     rate = new BigDecimal("9.70");
     baseIncome = income.multiply(csgRate);
-    expectedContribution = new BigDecimal("1564.42");
-    compute(CSG_CRDS.code(), income, rate, baseIncome, expectedContribution, "1564");
+    expectedContribution = new BigDecimal("1508.55");
+    compute(CSG_CRDS.code(), income, rate, baseIncome, expectedContribution, "1509");
   }
 
   private void compute(String code, BigDecimal income,

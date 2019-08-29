@@ -45,7 +45,7 @@ class Calculator2018Test {
     rate = new BigDecimal("6.35");
     baseIncome = passX5;
     expectedContribution = new BigDecimal("12614.91");
-    compute(Maladie1T1.code(), income, rate, baseIncome, expectedContribution, "12614");
+    compute(Maladie1T1.code(), income, rate, baseIncome, expectedContribution, "12615");
 
     // MAL1: Maladie 1 T1 + T2
 //    rate = new BigDecimal("1"); // not significant
@@ -57,7 +57,7 @@ class Calculator2018Test {
     rate = new BigDecimal("0.85");
     baseIncome = passX5;
     expectedContribution = new BigDecimal("1688.61");
-    compute(Maladie2.code(), income, rate, baseIncome, expectedContribution, "1688");
+    compute(Maladie2.code(), income, rate, baseIncome, expectedContribution, "1689");
 
     // RVB T1
     rate = new BigDecimal("17.75"); // not significant
@@ -69,7 +69,7 @@ class Calculator2018Test {
     rate = new BigDecimal("0.60"); // not significant
     baseIncome = income.subtract(pass);
     expectedContribution = new BigDecimal("1201.61");
-    compute(RetraiteT2.code(), income, rate, baseIncome, expectedContribution, "1201");
+    compute(RetraiteT2.code(), income, rate, baseIncome, expectedContribution, "1202");
 
     // RVB
 //    rate = new BigDecimal("1"); // not significant
@@ -87,7 +87,7 @@ class Calculator2018Test {
     rate = new BigDecimal("8.00");
     baseIncome = passX4.subtract(prci);
     expectedContribution = new BigDecimal("9686.56");
-    compute(RetraiteComplémentaireT2.code(), income, rate, baseIncome, expectedContribution, "9686");
+    compute(RetraiteComplémentaireT2.code(), income, rate, baseIncome, expectedContribution, "9687");
 
     // RCI
 //    rate = new BigDecimal("1"); // not significant
@@ -99,7 +99,7 @@ class Calculator2018Test {
     rate = new BigDecimal("1.30");
     baseIncome = pass;
     expectedContribution = new BigDecimal("516.52");
-    compute(InvalidititéDécès.code(), income, rate, baseIncome, expectedContribution, "516");
+    compute(InvalidititéDécès.code(), income, rate, baseIncome, expectedContribution, "517");
 
     // AF
     rate = new BigDecimal("3.10");
@@ -146,7 +146,7 @@ class Calculator2018Test {
     rate = new BigDecimal("0.85");
     baseIncome = income;
     expectedContribution = new BigDecimal("202.68");
-    compute(Maladie2.code(), income, rate, baseIncome, expectedContribution, "202");
+    compute(Maladie2.code(), income, rate, baseIncome, expectedContribution, "203");
 
     // RVB T1
     rate = new BigDecimal("17.75");
@@ -188,7 +188,7 @@ class Calculator2018Test {
     rate = new BigDecimal("1.30");
     baseIncome = income;
     expectedContribution = new BigDecimal("309.98");
-    compute(InvalidititéDécès.code(), income, rate, baseIncome, expectedContribution, "309");
+    compute(InvalidititéDécès.code(), income, rate, baseIncome, expectedContribution, "310");
 
     // AF
     rate = BigDecimal.ZERO.setScale(2); // R < 110% * PASS
@@ -223,7 +223,7 @@ class Calculator2018Test {
     rate = new BigDecimal("2.30");
     baseIncome = pass40percent;
     expectedContribution = new BigDecimal("364.98");
-    compute(Maladie1T1.code(), income, rate, baseIncome, expectedContribution, "364");
+    compute(Maladie1T1.code(), income, rate, baseIncome, expectedContribution, "365");
 
     // MAL1: Maladie 1 T1 + T2
 //    rate = new BigDecimal("1"); // not significant
@@ -241,7 +241,7 @@ class Calculator2018Test {
     rate = new BigDecimal("17.75");
     baseIncome = income;
     expectedContribution = new BigDecimal("2044.80");
-    compute(RetraiteT1.code(), income, rate, baseIncome, expectedContribution, "2044");
+    compute(RetraiteT1.code(), income, rate, baseIncome, expectedContribution, "2045");
 
     // RVB T2
     rate = new BigDecimal("0.60");
@@ -265,7 +265,7 @@ class Calculator2018Test {
     rate = new BigDecimal("1.30");
     baseIncome = income;
     expectedContribution = new BigDecimal("149.76");
-    compute(InvalidititéDécès.code(), income, rate, baseIncome, expectedContribution, "149");
+    compute(InvalidititéDécès.code(), income, rate, baseIncome, expectedContribution, "150");
 
     // AF
     rate = BigDecimal.ZERO.setScale(2); // R < 110% * PASS

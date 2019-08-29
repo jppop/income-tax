@@ -30,10 +30,11 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.Month;
 import java.time.OffsetDateTime;
-import java.util.Map;
-import java.util.Optional;
+import java.time.temporal.TemporalAdjusters;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
@@ -77,6 +78,45 @@ public class CalculationServiceImpl implements CalculationService {
   @Override
   public ServiceCall<NotUsed, PSequence<Contributor>> getContributors() {
     return request -> convertErrors(repository.findContributors());
+  }
+
+  @Override
+  public ServiceCall<NotUsed, Contributions> getContributions(String contributorId, Optional<Integer> year) {
+    final int yearValue = year.orElse(LocalDate.now().getYear());
+    return request -> convertErrors(
+        repository.findContributions(contributorId, yearValue))
+        .thenApply(contributionByMonth -> convertToContributions(contributorId, yearValue, contributionByMonth));
+  }
+
+  private Contributions convertToContributions(String contributorId, int year, PMap<Month, PSequence<Contribution>> contributionByMonth) {
+    // sort by month
+    Map<Month, List<Contribution>> result = contributionByMonth.entrySet().stream()
+        .filter(entry -> !entry.getValue().isEmpty())
+        .sorted(Map.Entry.comparingByKey())
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
+            (oldValue, newValue) -> oldValue, LinkedHashMap::new));
+
+    // sum all contributions by type
+    Map<String, BigDecimal> total = result.values().stream()
+        .flatMap(Collection::stream)
+        .collect(Collectors.groupingBy(
+            Contribution::getType,
+            LinkedHashMap::new,
+            Collectors.reducing(BigDecimal.ZERO, Contribution::getContribution, BigDecimal::add)));
+
+    // total income
+    final BigDecimal totalIncome = result.entrySet().stream()
+        .map(entry -> entry.getValue().stream().findFirst().get().income)
+        .reduce(BigDecimal.ZERO, (sum, income) -> sum.add(income));
+
+    Month startMonth = result.keySet().stream().min(Comparator.naturalOrder())
+        .orElseThrow(() -> new IllegalArgumentException(Messages.E_OOPS_ERROR.get()));
+    Month endMonth = result.keySet().stream().max(Comparator.naturalOrder())
+        .orElseThrow(() -> new IllegalArgumentException(Messages.E_OOPS_ERROR.get()));
+    LocalDate start = LocalDate.of(year, startMonth, 1);
+    LocalDate end = LocalDate.of(year, endMonth, 1).with(TemporalAdjusters.lastDayOfMonth());
+
+    return new Contributions(contributorId, start, end, totalIncome, total, result);
   }
 
   @Override
@@ -201,9 +241,8 @@ public class CalculationServiceImpl implements CalculationService {
       throw new IncomeTaxException(Messages.E_ILLEGAL_PERIOD.get(income.start, income.end));
     }
     // scale income or adjust to complete month
-    Income scaledIncome = scaleToEnd ? IncomeUtils.scaleToEndOfYear(income) : IncomeUtils.toCompleteMonths(income);
 
-    return scaledIncome;
+    return scaleToEnd ? IncomeUtils.scaleToEndOfYear(income) : IncomeUtils.toCompleteMonths(income);
   }
 
   private <T> CompletionStage<T> convertErrors(CompletionStage<T> future) {

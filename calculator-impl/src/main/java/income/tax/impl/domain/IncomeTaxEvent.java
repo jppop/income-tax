@@ -62,13 +62,15 @@ public interface IncomeTaxEvent extends Jsonable, AggregateEvent<IncomeTaxEvent>
     public final String contributorId;
     public final OffsetDateTime createdAt;
     public final Income income;
+    public final int year;
     public final PMap<Month, PMap<String, Contribution>> contributions;
 
     @JsonCreator
-    public IncomeApplied(String contributorId, Income income, OffsetDateTime createdAt, PMap<Month, PMap<String, Contribution>> contributions) {
+    public IncomeApplied(String contributorId, Income income, OffsetDateTime createdAt, int year, PMap<Month, PMap<String, Contribution>> contributions) {
       this.contributorId = Preconditions.checkNotNull(contributorId, "contributorId");
       this.income = Preconditions.checkNotNull(income, "income");
       this.createdAt = Preconditions.checkNotNull(createdAt, "createdAt");
+      this.year = year;
       this.contributions = contributions;
     }
   }

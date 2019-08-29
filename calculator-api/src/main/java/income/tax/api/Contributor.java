@@ -15,16 +15,10 @@ public class Contributor {
   String contributorId;
   public final @NonNull
   OffsetDateTime registrationDate;
-  public final
-  Long yearlyIncome;
-  public final
-  Long yearlyContribution;
 
   @JsonCreator
-  public Contributor(String contributorId, OffsetDateTime registrationDate, Long yearlyIncome, Long yearlyContribution) {
+  public Contributor(String contributorId, OffsetDateTime registrationDate) {
     this.contributorId = contributorId;
     this.registrationDate = registrationDate;
-    this.yearlyIncome = yearlyIncome;
-    this.yearlyContribution = yearlyContribution;
   }
 }

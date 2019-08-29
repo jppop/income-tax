@@ -7,6 +7,7 @@ import lombok.NonNull;
 import lombok.Value;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.Month;
 import java.util.List;
 import java.util.Map;
@@ -17,21 +18,26 @@ public class Contributions {
 
   public final @NonNull
   String contributorId;
-  public final
-  int year;
-  public final
-  long yearlyIncome;
   public final @NonNull
-  Map<String, BigDecimal> yearlyContributions;
+  LocalDate start;
+  public final @NonNull
+  LocalDate end;
+  public final @NonNull
+  BigDecimal totalIncome;
+  public final @NonNull
+  Map<String, BigDecimal> totalContributions;
   public final @NonNull
   Map<Month, List<Contribution>> contributions;
 
   @JsonCreator
-  public Contributions(String contributorId, int year, long yearlyIncome, Map<String, BigDecimal> yearlyContributions, Map<Month, List<Contribution>> contributions) {
+  public Contributions(
+      String contributorId, LocalDate start, LocalDate end, BigDecimal totalIncome,
+      Map<String, BigDecimal> totalContributions, Map<Month, List<Contribution>> contributions) {
     this.contributorId = contributorId;
-    this.year = year;
-    this.yearlyIncome = yearlyIncome;
-    this.yearlyContributions = yearlyContributions;
+    this.start = start;
+    this.end = end;
+    this.totalIncome = totalIncome;
+    this.totalContributions = totalContributions;
     this.contributions = contributions;
   }
 

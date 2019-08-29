@@ -14,9 +14,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.pcollections.PMap;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.Month;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -78,7 +80,8 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
                   state().contributorId, state().contributionYear, state().currentIncomes, state().contributions.contributions
               )),
           new IncomeTaxEvent.Registered(entityId(), cmd.registrationDate, cmd.previousYearlyIncome),
-          new IncomeTaxEvent.IncomeApplied(entityId(), yearlyIncome, now(), cmd.contributions));
+          new IncomeTaxEvent.IncomeApplied(
+              entityId(), yearlyIncome, now(), cmd.registrationDate.getYear(), cmd.contributions));
     });
 
     b.setCommandHandler(IncomeTaxCommand.ApplyIncome.class, (cmd, ctx) -> {
@@ -97,17 +100,14 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
             .withNewIncome(cmd.income)
             .withNewContributions(cmd.contributions)
             .modify();
-        ctx.reply(contributionsFrom(
-            newStateNotPersisted.contributorId, newStateNotPersisted.contributionYear, newStateNotPersisted.currentIncomes, newStateNotPersisted.contributions.contributions
-        ));
+        ctx.reply(contributionsFromState(newStateNotPersisted));
         return ctx.done();
       }
-      return ctx.thenPersist(new IncomeTaxEvent.IncomeApplied(entityId(), cmd.income, now(), cmd.contributions),
+      return ctx.thenPersist(
+          new IncomeTaxEvent.IncomeApplied(
+              entityId(), cmd.income, now(), state().contributionYear, cmd.contributions),
           // Then once the event is successfully persisted, we respond with calculated contributions.
-          evt -> ctx.reply(
-              contributionsFrom(
-                state().contributorId, state().contributionYear, state().currentIncomes, state().contributions.contributions
-          )));
+          evt -> ctx.reply(contributionsFromState(state())));
     });
     /*
      * Event handler for the Registered event.
@@ -142,6 +142,10 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
   }
 
   // FIXME: should be done in the service layer
+  private Contributions contributionsFromState(IncomeTaxState state) {
+    return contributionsFrom(state.contributorId, state.contributionYear, state.currentIncomes, state.contributions.contributions);
+  }
+
   private Contributions contributionsFrom(
       String contributorId, int year, PMap<Month, Income> currentIncomes, PMap<Month, PMap<String, Contribution>> yearlyContributions) {
 
@@ -169,18 +173,25 @@ public class IncomeTaxEntity extends PersistentEntity<IncomeTaxCommand, IncomeTa
 
     // sum all contributions by type
     Map<String, BigDecimal> total = result.values().stream()
-        .flatMap(o -> o.stream())
+        .flatMap(Collection::stream)
         .collect(Collectors.groupingBy(
             Contribution::getType,
             LinkedHashMap::new,
-            Collectors.reducing(BigDecimal.ZERO, Contribution::getContribution, (sum, c) -> sum.add(c))));
+            Collectors.reducing(BigDecimal.ZERO, Contribution::getContribution, BigDecimal::add)));
 
-    long yearlyIncome =
+    long totalIncome =
         currentIncomes.values().stream()
             .map(income -> income.income)
-            .reduce(0L, (sum, income) -> sum + income);
+            .reduce(0L, Long::sum);
 
-    return new Contributions(contributorId, year, yearlyIncome, total, result);
+    Month startMonth = currentIncomes.keySet().stream().min(Comparator.naturalOrder())
+        .orElseThrow(() -> new IllegalArgumentException(Messages.E_OOPS_ERROR.get()));
+    Month endMonth = currentIncomes.keySet().stream().max(Comparator.naturalOrder())
+        .orElseThrow(() -> new IllegalArgumentException(Messages.E_OOPS_ERROR.get()));
+    LocalDate start = LocalDate.of(year, startMonth, 1);
+    LocalDate end = LocalDate.of(year, endMonth, 1).with(TemporalAdjusters.lastDayOfMonth());
+
+    return new Contributions(contributorId, start, end, BigDecimal.valueOf(totalIncome), total, result);
   }
 
 }

@@ -8,6 +8,8 @@ import com.lightbend.lagom.javadsl.api.broker.Topic;
 import com.lightbend.lagom.javadsl.api.broker.kafka.KafkaProperties;
 import org.pcollections.PSequence;
 
+import java.util.Optional;
+
 import static com.lightbend.lagom.javadsl.api.Service.*;
 
 /**
@@ -35,6 +37,8 @@ public interface CalculationService extends Service {
 
   ServiceCall<NotUsed, PSequence<Contributor>> getContributors();
 
+  ServiceCall<NotUsed, Contributions> getContributions(String contributorId, Optional<Integer> year);
+
   ServiceCall<Income, Contributions> applyIncome(String contributorId, boolean scaleToEnd, boolean dryRun);
 
   /**
@@ -48,7 +52,8 @@ public interface CalculationService extends Service {
     return named("calculation").withCalls(
         pathCall("/api/contributors", this::register),
         pathCall("/api/contributors", this::getContributors),
-        pathCall("/api/contributions/:contributorId/declare?scaleToEnd&dryRun", this::applyIncome)
+        pathCall("/api/contributions/:contributorId/declare?scaleToEnd&dryRun", this::applyIncome),
+        pathCall("/api/contributions/:contributorId?year", this::getContributions)
     ).withTopics(
         topic("calculation-events", this::calculationEvents)
             // Kafka partitions messages, messages within the same partition will

@@ -18,10 +18,10 @@
   </properties>
 
   <modules>
-    <module>contribution-calculator-api</module>
-    <module>contribution-calculator-impl</module>
-    <module>calculator-api</module>
-    <module>calculator-impl</module>
+    <module>contribution-api</module>
+    <module>contribution-impl</module>
+    <module>income-api</module>
+    <module>income-impl</module>
     <module>stream-api</module>
     <module>stream-impl</module>
     <module>integration-tests</module>
@@ -43,19 +43,25 @@
             </to>
             <container>
               <jvmFlags>
+                <!--suppress UnresolvedMavenProperty -->
                 <jvmFlag>-Dplay.crypto.secret="${APPLICATION_SECRET:-none}"</jvmFlag>
+                <!--suppress UnresolvedMavenProperty -->
                 <jvmFlag>-Dplay.akka.actor-system="${service.actor.bash}"</jvmFlag>
+                <!--suppress UnresolvedMavenProperty -->
                 <jvmFlag>-Dhttp.address="${service.bind.ip.bash}"</jvmFlag>
+                <!--suppress UnresolvedMavenProperty -->
                 <jvmFlag>-Dhttp.port="${service.bind.port.bash}"</jvmFlag>
                 <jvmFlag>-Dakka.actor.provider=cluster</jvmFlag>
                 <jvmFlag>-Dakka.remote.netty.tcp.hostname="$(eval "echo $AKKA_REMOTING_BIND_HOST")"</jvmFlag>
                 <jvmFlag>-Dakka.remote.netty.tcp.port="$AKKA_REMOTING_BIND_PORT"</jvmFlag>
+                <!--suppress UnresolvedMavenProperty -->
                 <jvmFlag>
                   -Dakka.cluster.seed-nodes.0="akka.tcp://${AKKA_ACTOR_SYSTEM_NAME}@${AKKA_SEED_NODE_HOST}:${AKKA_SEED_NODE_PORT}"
                 </jvmFlag>
                 <jvmFlag>-Dakka.io.dns.resolver=async-dns</jvmFlag>
                 <jvmFlag>-Dakka.io.dns.async-dns.resolve-srv=true</jvmFlag>
                 <jvmFlag>-Dakka.io.dns.async-dns.resolv-conf=on</jvmFlag>
+                <!--suppress UnresolvedMavenProperty -->
                 <jmvFalg>-Dservice.log.level=${SERVICE_LOG_LEVEL:-info}</jmvFalg>
               </jvmFlags>
               <mainClass>play.core.server.ProdServerStart</mainClass>

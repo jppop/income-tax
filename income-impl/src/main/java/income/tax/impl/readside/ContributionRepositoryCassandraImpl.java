@@ -42,7 +42,7 @@ public class ContributionRepositoryCassandraImpl implements ContributionReposito
   private static final UnaryOperator<String> regionFromContributorId = id -> id.length() > 3 ? id.substring(0, 3) : "???";
   private final CassandraSession session;
   private final CassandraReadSide readSide;
-  private final String keyspace = "tax_calculation";
+  private final String keyspace = "incometax_income";
   private PreparedStatement writeContributors; // initialized in prepareStatement
   private PreparedStatement writeContributions; // initialized in prepareStatement
   private UserType contributionUdtType;  // initialized in prepareStatement

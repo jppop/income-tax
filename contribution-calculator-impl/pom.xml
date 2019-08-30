@@ -11,6 +11,13 @@
 
   <artifactId>contribution-calculator-impl</artifactId>
 
+  <properties>
+    <service.name>contribution</service.name>
+    <service.bind.ip.bash>${CONTRIBUTION_BIND_IP}</service.bind.ip.bash>
+    <service.bind.port.bash>${CONTRIBUTION_BIND_PORT}</service.bind.port.bash>
+    <service.actor.bash>${AKKA_ACTOR_SYSTEM_NAME:-contribution-v1}</service.actor.bash>
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>income-tax</groupId>
@@ -109,4 +116,27 @@
       </plugin>
     </plugins>
   </build>
+
+  <profiles>
+    <profile>
+      <id>docker</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>com.google.cloud.tools</groupId>
+            <artifactId>jib-maven-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>build-container</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>dockerBuild</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

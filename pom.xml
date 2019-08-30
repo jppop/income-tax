@@ -28,6 +28,53 @@
   </modules>
 
   <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>com.google.cloud.tools</groupId>
+          <artifactId>jib-maven-plugin</artifactId>
+          <version>1.5.0</version>
+          <configuration>
+            <from>
+              <image>openjdk:8-jre-alpine</image>
+            </from>
+            <to>
+              <image>${project.groupId}/${project.artifactId}</image>
+            </to>
+            <container>
+              <jvmFlags>
+                <jvmFlag>-Dplay.crypto.secret="${APPLICATION_SECRET:-none}"</jvmFlag>
+                <jvmFlag>-Dplay.akka.actor-system="${service.actor.bash}"</jvmFlag>
+                <jvmFlag>-Dhttp.address="${service.bind.ip.bash}"</jvmFlag>
+                <jvmFlag>-Dhttp.port="${service.bind.port.bash}"</jvmFlag>
+                <jvmFlag>-Dakka.actor.provider=cluster</jvmFlag>
+                <jvmFlag>-Dakka.remote.netty.tcp.hostname="$(eval "echo $AKKA_REMOTING_BIND_HOST")"</jvmFlag>
+                <jvmFlag>-Dakka.remote.netty.tcp.port="$AKKA_REMOTING_BIND_PORT"</jvmFlag>
+                <jvmFlag>
+                  -Dakka.cluster.seed-nodes.0="akka.tcp://${AKKA_ACTOR_SYSTEM_NAME}@${AKKA_SEED_NODE_HOST}:${AKKA_SEED_NODE_PORT}"
+                </jvmFlag>
+                <jvmFlag>-Dakka.io.dns.resolver=async-dns</jvmFlag>
+                <jvmFlag>-Dakka.io.dns.async-dns.resolve-srv=true</jvmFlag>
+                <jvmFlag>-Dakka.io.dns.async-dns.resolv-conf=on</jvmFlag>
+                <jmvFalg>-Dservice.log.level=${SERVICE_LOG_LEVEL:-info}</jmvFalg>
+              </jvmFlags>
+              <mainClass>play.core.server.ProdServerStart</mainClass>
+              <ports>
+                <port>9000</port>
+                <port>2551</port>
+              </ports>
+              <labels>
+                <app>${project.groupId}</app>
+              </labels>
+              <format>OCI</format>
+<!--              <useCurrentTimestamp>true</useCurrentTimestamp>-->
+              <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
+            </container>
+          </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+
     <plugins>
       <plugin>
         <artifactId>maven-assembly-plugin</artifactId>
@@ -37,15 +84,15 @@
         <groupId>com.lightbend.lagom</groupId>
         <artifactId>lagom-maven-plugin</artifactId>
         <version>${lagom.version}</version>
-<!--
-        <configuration>
-          <cassandraYamlFile>${basedir}/dev-embedded-cassandra.yaml</cassandraYamlFile>
-          <unmanagedServices>
-            <cas_native>http://localhost:9042</cas_native>
-          </unmanagedServices>
-          <cassandraEnabled>false</cassandraEnabled>
-        </configuration>
--->
+        <!--
+                <configuration>
+                  <cassandraYamlFile>${basedir}/dev-embedded-cassandra.yaml</cassandraYamlFile>
+                  <unmanagedServices>
+                    <cas_native>http://localhost:9042</cas_native>
+                  </unmanagedServices>
+                  <cassandraEnabled>false</cassandraEnabled>
+                </configuration>
+        -->
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>

@@ -14,11 +14,11 @@
   <packaging>jar</packaging>
 
   <properties>
-    <service.name>stream</service.name>
+    <service.name>streamservice</service.name>
     <!--suppress UnresolvedMavenProperty -->
-    <service.bind.ip.bash>${STREAM_BIND_IP}</service.bind.ip.bash>
+    <service.bind.ip.bash>${STREAMSERVICE_BIND_IP}</service.bind.ip.bash>
     <!--suppress UnresolvedMavenProperty -->
-    <service.bind.port.bash>${STREAM_BIND_PORT}</service.bind.port.bash>
+    <service.bind.port.bash>${STREAMSERVICE_BIND_PORT}</service.bind.port.bash>
     <!--suppress UnresolvedMavenProperty -->
     <service.actor.bash>${AKKA_ACTOR_SYSTEM_NAME:-stream-v1}</service.actor.bash>
   </properties>

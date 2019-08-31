@@ -14,11 +14,11 @@
   <packaging>jar</packaging>
 
   <properties>
-    <service.name>income</service.name>
+    <service.name>incomeservice</service.name>
     <!--suppress UnresolvedMavenProperty -->
-    <service.bind.ip.bash>${INCOME_BIND_IP}</service.bind.ip.bash>
+    <service.bind.ip.bash>${INCOMESERVICE_BIND_IP}</service.bind.ip.bash>
     <!--suppress UnresolvedMavenProperty -->
-    <service.bind.port.bash>${INCOME_BIND_PORT}</service.bind.port.bash>
+    <service.bind.port.bash>${INCOMESERVICE_BIND_PORT}</service.bind.port.bash>
     <!--suppress UnresolvedMavenProperty -->
     <service.actor.bash>${AKKA_ACTOR_SYSTEM_NAME:-income-v1}</service.actor.bash>
   </properties>

@@ -15,7 +15,7 @@ public interface CalculatorService extends Service {
 
   @Override
   default Descriptor descriptor() {
-    return named("calculator")
+    return named("contribution")
         .withCalls(
             pathCall("/api/contribution", this::compute)
         )

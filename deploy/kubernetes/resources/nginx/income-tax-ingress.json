@@ -1,0 +1,44 @@
+{
+  "apiVersion": "extensions/v1beta1",
+  "kind": "Ingress",
+  "metadata": {
+    "name": "income-tax-ingress",
+    "annotations": {
+      "ingress.kubernetes.io/ssl-redirect": "false"
+    }
+  },
+  "spec": {
+    "tls": [
+      { "secretName": "income-tax-tls-secret" }
+    ],
+    "rules": [
+      {
+        "http": {
+          "paths": [
+            {
+              "path": "/api/contribution",
+              "backend": {
+                "serviceName": "contributionservice",
+                "servicePort": 9000
+              }
+            },
+            {
+              "path": "/api/income",
+              "backend": {
+                "serviceName": "incomeservice",
+                "servicePort": 9000
+              }
+            },
+            {
+              "path": "/cassandra",
+              "backend": {
+                "serviceName": "cassandra",
+                "servicePort": 9042
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

@@ -12,11 +12,11 @@
   <artifactId>contribution-impl</artifactId>
 
   <properties>
-    <service.name>contribution</service.name>
+    <service.name>contributionservice</service.name>
     <!--suppress UnresolvedMavenProperty -->
-    <service.bind.ip.bash>${CONTRIBUTION_BIND_IP}</service.bind.ip.bash>
+    <service.bind.ip.bash>${CONTRIBUTIONSERVICE_BIND_IP}</service.bind.ip.bash>
     <!--suppress UnresolvedMavenProperty -->
-    <service.bind.port.bash>${CONTRIBUTION_BIND_PORT}</service.bind.port.bash>
+    <service.bind.port.bash>${CONTRIBUTIONSERVICE_BIND_PORT}</service.bind.port.bash>
     <!--suppress UnresolvedMavenProperty -->
     <service.actor.bash>${AKKA_ACTOR_SYSTEM_NAME:-contribution-v1}</service.actor.bash>
   </properties>

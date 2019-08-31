@@ -49,11 +49,11 @@ public interface CalculationService extends Service {
   @Override
   default Descriptor descriptor() {
     // @formatter:off
-    return named("calculation").withCalls(
-        pathCall("/api/contributors", this::register),
-        pathCall("/api/contributors", this::getContributors),
-        pathCall("/api/contributions/:contributorId/declare?scaleToEnd&dryRun", this::applyIncome),
-        pathCall("/api/contributions/:contributorId?year", this::getContributions)
+    return named("income").withCalls(
+        pathCall("/api/income/contributors", this::register),
+        pathCall("/api/income/contributors", this::getContributors),
+        pathCall("/api/income/contributions/:contributorId/declare?scaleToEnd&dryRun", this::applyIncome),
+        pathCall("/api/income/contributions/:contributorId?year", this::getContributions)
     ).withTopics(
         topic("calculation-events", this::calculationEvents)
             // Kafka partitions messages, messages within the same partition will

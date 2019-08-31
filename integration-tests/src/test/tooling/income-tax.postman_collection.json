@@ -1,0 +1,154 @@
+{
+	"info": {
+		"_postman_id": "c807dcfe-eab1-41c9-b178-b9391b8d47bd",
+		"name": "income-tax",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "contributors",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"value": "application/json",
+						"disabled": false
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"contributorId\": \"999-001\",\n\t\"registrationDate\": \"2019-08-19T14:20:38Z\",\n\t\"previousYearlyIncome\": 24250,\n\t\"incomeType\": \"estimated\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:9000/api/income/contributors",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "9000",
+					"path": [
+						"api",
+						"income",
+						"contributors"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "contributors",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:9000/api/income/contributors",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "9000",
+					"path": [
+						"api",
+						"income",
+						"contributors"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "apply income",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"income\": 2100,\n\t\"incomeType\": \"estimated\",\n\t\"start\": \"2019-08-01T00:00:00Z\",\n\t\"end\": \"2019-08-31T00:00:00Z\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:9000/api/income/contributions/999-001/declare?scaleToEnd=true&dryRun=false",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "9000",
+					"path": [
+						"api",
+						"income",
+						"contributions",
+						"999-001",
+						"declare"
+					],
+					"query": [
+						{
+							"key": "scaleToEnd",
+							"value": "true"
+						},
+						{
+							"key": "dryRun",
+							"value": "false"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "contributions",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:9000/api/income/contributions/999-001",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "9000",
+					"path": [
+						"api",
+						"income",
+						"contributions",
+						"999-001"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "services",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": []
+				},
+				"url": {
+					"raw": "http://localhost:9008/services",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "9008",
+					"path": [
+						"services"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

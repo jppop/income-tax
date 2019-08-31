@@ -1,0 +1,103 @@
+{
+  "apiVersion": "apps/v1beta1",
+  "kind": "StatefulSet",
+  "metadata": {
+    "name": "contributionservice"
+  },
+  "spec": {
+    "serviceName": "contributionservice",
+    "replicas": 1,
+    "template": {
+      "metadata": {
+        "labels": {
+          "app": "contributionservice"
+        }
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "contributionservice",
+            "image": "income-tax/contribution-impl",
+            "imagePullPolicy": "Never",
+            "ports": [
+              {
+                "containerPort": 9000,
+                "name": "http-lagom-api"
+              },
+              {
+                "containerPort": 2551,
+                "name": "akka-remote"
+              }
+            ],
+            "env": [
+              {
+                "name": "CASSANDRA_SERVICE_NAME",
+                "value": "_native._tcp.cassandra.default.svc.cluster.local"
+              },
+              {
+                "name": "APPLICATION_SECRET",
+                "value": "contributionservice-application-secret"
+              },
+              {
+                "name": "CONTRIBUTIONSERVICE_BIND_PORT",
+                "value": "9000"
+              },
+              {
+                "name": "CONTRIBUTIONSERVICE_BIND_IP",
+                "value": "0.0.0.0"
+              },
+              {
+                "name": "AKKA_ACTOR_SYSTEM_NAME",
+                "value": "contributionservice-v1"
+              },
+              {
+                "name": "AKKA_REMOTING_BIND_PORT",
+                "value": "2551"
+              },
+              {
+                "name": "AKKA_REMOTING_BIND_HOST",
+                "value": "$HOSTNAME.contributionservice.default.svc.cluster.local"
+              },
+              {
+                "name": "AKKA_SEED_NODE_PORT",
+                "value": "2551"
+              },
+              {
+                "name": "AKKA_SEED_NODE_HOST",
+                "value": "contributionservice-0.contributionservice.default.svc.cluster.local"
+              },
+              {
+                "name": "SERVICE_LOG_LEVEL",
+                "value": "debug"
+              },
+              {
+                "name": "POD_NAME",
+                "valueFrom": {
+                  "fieldRef": {
+                    "fieldPath": "metadata.name"
+                  }
+                }
+              },
+              {
+                "name": "POD_NAMESPACE",
+                "valueFrom": {
+                  "fieldRef": {
+                    "fieldPath": "metadata.namespace"
+                  }
+                }
+              }
+            ],
+            "readinessProbe": {
+              "httpGet": {
+                "path": "/_status/circuit-breaker/current",
+                "port": 9000
+              },
+              "initialDelaySeconds": 5,
+              "periodSeconds": 5
+            }
+          }
+        ]
+      }
+    }
+  }
+}

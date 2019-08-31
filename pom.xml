@@ -12,20 +12,75 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <scala.binary.version>2.12</scala.binary.version>
-    <lagom.version>1.5.1</lagom.version>
+    <lagom.version>1.6.0-M5</lagom.version>
     <junit.version>5.5.1</junit.version>
     <logback.version>1.2.3</logback.version>
   </properties>
 
   <modules>
-    <module>calculator-api</module>
-    <module>calculator-impl</module>
+    <module>contribution-api</module>
+    <module>contribution-impl</module>
+    <module>income-api</module>
+    <module>income-impl</module>
     <module>stream-api</module>
     <module>stream-impl</module>
     <module>integration-tests</module>
   </modules>
 
   <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>com.google.cloud.tools</groupId>
+          <artifactId>jib-maven-plugin</artifactId>
+          <version>1.5.0</version>
+          <configuration>
+            <from>
+              <image>openjdk:8-jre-alpine</image>
+            </from>
+            <to>
+              <image>${project.groupId}/${project.artifactId}</image>
+            </to>
+            <container>
+              <jvmFlags>
+                <!--suppress UnresolvedMavenProperty -->
+                <jvmFlag>-Dplay.crypto.secret="${APPLICATION_SECRET:-none}"</jvmFlag>
+                <!--suppress UnresolvedMavenProperty -->
+                <jvmFlag>-Dplay.akka.actor-system="${service.actor.bash}"</jvmFlag>
+                <!--suppress UnresolvedMavenProperty -->
+                <jvmFlag>-Dhttp.address="${service.bind.ip.bash}"</jvmFlag>
+                <!--suppress UnresolvedMavenProperty -->
+                <jvmFlag>-Dhttp.port="${service.bind.port.bash}"</jvmFlag>
+                <jvmFlag>-Dakka.actor.provider=cluster</jvmFlag>
+                <jvmFlag>-Dakka.remote.netty.tcp.hostname="$(eval "echo $AKKA_REMOTING_BIND_HOST")"</jvmFlag>
+                <jvmFlag>-Dakka.remote.netty.tcp.port="$AKKA_REMOTING_BIND_PORT"</jvmFlag>
+                <!--suppress UnresolvedMavenProperty -->
+                <jvmFlag>
+                  -Dakka.cluster.seed-nodes.0="akka.tcp://${AKKA_ACTOR_SYSTEM_NAME}@${AKKA_SEED_NODE_HOST}:${AKKA_SEED_NODE_PORT}"
+                </jvmFlag>
+                <jvmFlag>-Dakka.io.dns.resolver=async-dns</jvmFlag>
+                <jvmFlag>-Dakka.io.dns.async-dns.resolve-srv=true</jvmFlag>
+                <jvmFlag>-Dakka.io.dns.async-dns.resolv-conf=on</jvmFlag>
+                <!--suppress UnresolvedMavenProperty -->
+                <jmvFalg>-Dservice.log.level=${SERVICE_LOG_LEVEL:-info}</jmvFalg>
+              </jvmFlags>
+              <mainClass>play.core.server.ProdServerStart</mainClass>
+              <ports>
+                <port>9000</port>
+                <port>2551</port>
+              </ports>
+              <labels>
+                <app>${project.groupId}</app>
+              </labels>
+              <format>OCI</format>
+<!--              <useCurrentTimestamp>true</useCurrentTimestamp>-->
+              <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
+            </container>
+          </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+
     <plugins>
       <plugin>
         <artifactId>maven-assembly-plugin</artifactId>
@@ -35,17 +90,51 @@
         <groupId>com.lightbend.lagom</groupId>
         <artifactId>lagom-maven-plugin</artifactId>
         <version>${lagom.version}</version>
+        <!--
+                <configuration>
+                  <cassandraYamlFile>${basedir}/dev-embedded-cassandra.yaml</cassandraYamlFile>
+                  <unmanagedServices>
+                    <cas_native>http://localhost:9042</cas_native>
+                  </unmanagedServices>
+                  <cassandraEnabled>false</cassandraEnabled>
+                </configuration>
+        -->
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.5.1</version>
+        <version>3.8.0</version>
         <configuration>
           <source>1.8</source>
           <target>1.8</target>
           <compilerArgs>
             <arg>-parameters</arg>
+            <arg>-Xlint:unchecked</arg>
+            <arg>-Xlint:deprecation</arg>
+            <arg>-Werror</arg>
           </compilerArgs>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>2.22.0</version>
+        <configuration>
+          <argLine>
+            -Xms512M -Xmx2048M -Xss2M -XX:MaxMetaspaceSize=1024M
+          </argLine>
+          <forkCount>1</forkCount>
+          <reuseForks>true</reuseForks>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <version>2.22.0</version>
+        <configuration>
+          <argLine>
+            -Xms512M -Xmx2048M -Xss2M -XX:MaxMetaspaceSize=1024M
+          </argLine>
         </configuration>
       </plugin>
       <plugin>
@@ -115,4 +204,24 @@
     </dependencies>
   </dependencyManagement>
 
+  <profiles>
+    <profile>
+      <id>cas-native</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>com.lightbend.lagom</groupId>
+            <artifactId>lagom-maven-plugin</artifactId>
+            <version>${lagom.version}</version>
+            <configuration>
+              <unmanagedServices>
+                <cas_native>http://localhost:9042</cas_native>
+              </unmanagedServices>
+              <cassandraEnabled>false</cassandraEnabled>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

@@ -1,50 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
-                      http://maven.apache.org/xsd/maven-4.0.0.xsd">
-  <modelVersion>4.0.0</modelVersion>
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
-    <groupId>income-tax</groupId>
     <artifactId>calculator</artifactId>
+    <groupId>income-tax</groupId>
     <version>1.0-SNAPSHOT</version>
   </parent>
+  <modelVersion>4.0.0</modelVersion>
 
-  <artifactId>stream-impl</artifactId>
-
-  <packaging>jar</packaging>
+  <artifactId>contribution-impl</artifactId>
 
   <properties>
-    <service.name>streamservice</service.name>
+    <service.name>contributionservice</service.name>
     <!--suppress UnresolvedMavenProperty -->
-    <service.bind.ip.bash>${STREAMSERVICE_BIND_IP}</service.bind.ip.bash>
+    <service.bind.ip.bash>${CONTRIBUTIONSERVICE_BIND_IP}</service.bind.ip.bash>
     <!--suppress UnresolvedMavenProperty -->
-    <service.bind.port.bash>${STREAMSERVICE_BIND_PORT}</service.bind.port.bash>
+    <service.bind.port.bash>${CONTRIBUTIONSERVICE_BIND_PORT}</service.bind.port.bash>
     <!--suppress UnresolvedMavenProperty -->
-    <service.actor.bash>${AKKA_ACTOR_SYSTEM_NAME:-stream-v1}</service.actor.bash>
+    <service.actor.bash>${AKKA_ACTOR_SYSTEM_NAME:-contribution-v1}</service.actor.bash>
   </properties>
 
   <dependencies>
     <dependency>
       <groupId>${project.groupId}</groupId>
-      <artifactId>stream-api</artifactId>
+      <artifactId>contribution-api</artifactId>
       <version>${project.version}</version>
     </dependency>
-    <dependency>
-      <groupId>${project.groupId}</groupId>
-      <artifactId>calculator-api</artifactId>
-      <version>${project.version}</version>
-    </dependency>
+
     <dependency>
       <groupId>com.lightbend.lagom</groupId>
       <artifactId>lagom-javadsl-server_${scala.binary.version}</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.lightbend.lagom</groupId>
-      <artifactId>lagom-javadsl-persistence-cassandra_${scala.binary.version}</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.lightbend.lagom</groupId>
-      <artifactId>lagom-javadsl-kafka-client_${scala.binary.version}</artifactId>
     </dependency>
     <dependency>
       <groupId>com.lightbend.lagom</groupId>
@@ -53,6 +39,34 @@
     <dependency>
       <groupId>com.typesafe.play</groupId>
       <artifactId>play-akka-http-server_${scala.binary.version}</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.lightbend.lagom</groupId>
+      <artifactId>lagom-javadsl-akka-discovery-service-locator_${scala.binary.version}</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.lightbend.lagom</groupId>
+      <artifactId>lagom-javadsl-persistence-cassandra_${scala.binary.version}</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.pcollections</groupId>
+      <artifactId>pcollections</artifactId>
+      <version>3.1.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.datatype</groupId>
+      <artifactId>jackson-datatype-pcollections</artifactId>
+      <version>2.9.9</version>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-engine</artifactId>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.lightbend.lagom</groupId>
@@ -67,11 +81,6 @@
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-engine</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-params</artifactId>
       <scope>test</scope>
     </dependency>
@@ -80,9 +89,26 @@
       <artifactId>assertj-core</artifactId>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-all</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
+    <resources>
+      <resource>
+        <directory>${project.basedir}/src/main/resources</directory>
+        <filtering>true</filtering>
+      </resource>
+    </resources>
+    <testResources>
+      <testResource>
+        <directory>${project.basedir}/src/test/resources</directory>
+        <filtering>true</filtering>
+      </testResource>
+    </testResources>
     <plugins>
       <plugin>
         <groupId>com.lightbend.lagom</groupId>

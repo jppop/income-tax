@@ -12,9 +12,9 @@ public interface Calculator {
   int getYear();
   BigDecimal round(BigDecimal value);
 
-  Map<String, ContributionInternal> computeFromYearlyIncome(BigDecimal income, boolean round);
+  Map<String, ContributionInternal> computeFromYearlyIncome(BigDecimal income);
 
-  Map<String, ContributionInternal> computeFromMonthlyIncome(Month month, BigDecimal income, boolean round, Optional<Map<String, Object>> additionalArgs);
+  Map<String, ContributionInternal> computeFromMonthlyIncome(Month month, BigDecimal income, Optional<Map<String, Object>> additionalArgs);
 
   @FunctionalInterface
   interface IncomeBasedCalculator {

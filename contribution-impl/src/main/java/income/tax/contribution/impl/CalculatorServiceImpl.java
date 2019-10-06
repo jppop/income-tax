@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -33,11 +34,21 @@ public class CalculatorServiceImpl implements CalculatorService {
     return monthlyIncomeRequest ->
         convertErrors(
             CompletableFuture.supplyAsync(() -> doCompute(monthlyIncomeRequest))
-                .thenApply(contributions -> convertInternalContribution(contributions))
+                .thenApply(contributions -> convertInternalContribution(contributions, monthlyIncomeRequest))
         );
   }
 
   private Map<String, ContributionInternal> doCompute(MonthlyIncomeRequest monthlyIncomeRequest) {
+    Calculator calculator = calculator(monthlyIncomeRequest);
+    Map<String, ContributionInternal> monthContributions =
+        calculator.computeFromMonthlyIncome(
+            monthlyIncomeRequest.month,
+            monthlyIncomeRequest.income,
+            monthlyIncomeRequest.additionalArgs);
+    return monthContributions;
+  }
+
+  private Calculator calculator(MonthlyIncomeRequest monthlyIncomeRequest) {
     // get the calculator
     logger.debug("Configured calculators: {}", calculators);
     Calculator calculator = calculators.get(monthlyIncomeRequest.year);
@@ -45,19 +56,23 @@ public class CalculatorServiceImpl implements CalculatorService {
       Optional<Calculator> maybeCalculator = calculators.values().stream().findFirst();
       calculator = maybeCalculator.orElseThrow(() -> new IllegalStateException("Something went really bad. No calculator defined"));
     }
-    Map<String, ContributionInternal> monthContributions =
-        calculator.computeFromMonthlyIncome(
-            monthlyIncomeRequest.month,
-            monthlyIncomeRequest.income,
-            monthlyIncomeRequest.round,
-            monthlyIncomeRequest.additionalArgs);
-    return monthContributions;
+    return calculator;
   }
 
-  private Map<String, Contribution> convertInternalContribution(Map<String, ContributionInternal> contributionsInternal) {
+  private Map<String, Contribution> convertInternalContribution(
+      Map<String, ContributionInternal> contributionsInternal,
+      MonthlyIncomeRequest monthlyIncomeRequest
+  ) {
+    Calculator calculator = calculator(monthlyIncomeRequest);
     Map<String, Contribution> contributions = new HashMap<>();
     for (Map.Entry<String, ContributionInternal> entry : contributionsInternal.entrySet()) {
       ContributionInternal contributionInternal = entry.getValue();
+      BigDecimal contribution;
+      if (monthlyIncomeRequest.round) {
+        contribution = calculator.round(contributionInternal.contribution);
+      } else {
+        contribution = contributionInternal.contribution;
+      }
       contributions.put(
           entry.getKey(),
           new Contribution(
@@ -65,7 +80,7 @@ public class CalculatorServiceImpl implements CalculatorService {
               contributionInternal.income,
               contributionInternal.baseIncome,
               contributionInternal.rate,
-              contributionInternal.contribution));
+              contribution));
     }
     return HashTreePMap.from(contributions);
   }

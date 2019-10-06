@@ -78,13 +78,13 @@ class Calculator2019Test {
     rate = new BigDecimal("7.00");
     baseIncome = prci;
     expectedContribution = new BigDecimal("2657.20");
-    compute(RetraiteComplémentaireT1.code(), income, rate, baseIncome, expectedContribution, "2657");
+    compute(RetraiteComplementaireT1.code(), income, rate, baseIncome, expectedContribution, "2657");
 
     // RCI T2
     rate = new BigDecimal("8.00");
     baseIncome = passX4.subtract(prci);
     expectedContribution = new BigDecimal("9930.88");
-    compute(RetraiteComplémentaireT2.code(), income, rate, baseIncome, expectedContribution, "9931");
+    compute(RetraiteComplementaireT2.code(), income, rate, baseIncome, expectedContribution, "9931");
 
     // RCI
 //    rate = new BigDecimal("1"); // not significant
@@ -96,7 +96,7 @@ class Calculator2019Test {
     rate = new BigDecimal("1.30");
     baseIncome = pass;
     expectedContribution = new BigDecimal("526.82");
-    compute(InvalidititéDécès.code(), income, rate, baseIncome, expectedContribution, "527");
+    compute(InvalidititeDeces.code(), income, rate, baseIncome, expectedContribution, "527");
 
     // AF
     rate = new BigDecimal("3.10");
@@ -167,13 +167,13 @@ class Calculator2019Test {
     rate = new BigDecimal("7.00");
     baseIncome = income;
     expectedContribution = new BigDecimal("1669.08");
-    compute(RetraiteComplémentaireT1.code(), income, rate, baseIncome, expectedContribution, "1669");
+    compute(RetraiteComplementaireT1.code(), income, rate, baseIncome, expectedContribution, "1669");
 
     // RCI T2
     rate = new BigDecimal("8.00");
     baseIncome = BigDecimal.ZERO;
     expectedContribution = BigDecimal.ZERO.setScale(2);
-    compute(RetraiteComplémentaireT2.code(), income, rate, baseIncome, expectedContribution, "0");
+    compute(RetraiteComplementaireT2.code(), income, rate, baseIncome, expectedContribution, "0");
 
 //    // RCI
 //    rate = new BigDecimal("1"); // not significant
@@ -185,7 +185,7 @@ class Calculator2019Test {
     rate = new BigDecimal("1.30");
     baseIncome = income;
     expectedContribution = new BigDecimal("309.98");
-    compute(InvalidititéDécès.code(), income, rate, baseIncome, expectedContribution, "310");
+    compute(InvalidititeDeces.code(), income, rate, baseIncome, expectedContribution, "310");
 
     // AF
     rate = BigDecimal.ZERO.setScale(2); // R < 110% * PASS
@@ -250,19 +250,19 @@ class Calculator2019Test {
     rate = new BigDecimal("7.00");
     baseIncome = income;
     expectedContribution = new BigDecimal("806.40");
-    compute(RetraiteComplémentaireT1.code(), income, rate, baseIncome, expectedContribution, "806");
+    compute(RetraiteComplementaireT1.code(), income, rate, baseIncome, expectedContribution, "806");
 
     // RCI T2
     rate = new BigDecimal("8.00");
     baseIncome = BigDecimal.ZERO;
     expectedContribution = BigDecimal.ZERO.setScale(2);
-    compute(RetraiteComplémentaireT2.code(), income, rate, baseIncome, expectedContribution, "0");
+    compute(RetraiteComplementaireT2.code(), income, rate, baseIncome, expectedContribution, "0");
 
     // RID
     rate = new BigDecimal("1.30");
     baseIncome = income;
     expectedContribution = new BigDecimal("149.76");
-    compute(InvalidititéDécès.code(), income, rate, baseIncome, expectedContribution, "150");
+    compute(InvalidititeDeces.code(), income, rate, baseIncome, expectedContribution, "150");
 
     // AF
     rate = BigDecimal.ZERO.setScale(2); // R < 110% * PASS

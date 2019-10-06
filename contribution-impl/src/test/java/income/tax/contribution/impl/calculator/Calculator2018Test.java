@@ -81,13 +81,13 @@ class Calculator2018Test {
     rate = new BigDecimal("7.00");
     baseIncome = prci;
     expectedContribution = new BigDecimal("2649.22");
-    compute(RetraiteComplémentaireT1.code(), income, rate, baseIncome, expectedContribution, "2649");
+    compute(RetraiteComplementaireT1.code(), income, rate, baseIncome, expectedContribution, "2649");
 
     // RCI T2
     rate = new BigDecimal("8.00");
     baseIncome = passX4.subtract(prci);
     expectedContribution = new BigDecimal("9686.56");
-    compute(RetraiteComplémentaireT2.code(), income, rate, baseIncome, expectedContribution, "9687");
+    compute(RetraiteComplementaireT2.code(), income, rate, baseIncome, expectedContribution, "9687");
 
     // RCI
 //    rate = new BigDecimal("1"); // not significant
@@ -99,7 +99,7 @@ class Calculator2018Test {
     rate = new BigDecimal("1.30");
     baseIncome = pass;
     expectedContribution = new BigDecimal("516.52");
-    compute(InvalidititéDécès.code(), income, rate, baseIncome, expectedContribution, "517");
+    compute(InvalidititeDeces.code(), income, rate, baseIncome, expectedContribution, "517");
 
     // AF
     rate = new BigDecimal("3.10");
@@ -170,13 +170,13 @@ class Calculator2018Test {
     rate = new BigDecimal("7.00");
     baseIncome = income;
     expectedContribution = new BigDecimal("1669.08");
-    compute(RetraiteComplémentaireT1.code(), income, rate, baseIncome, expectedContribution, "1669");
+    compute(RetraiteComplementaireT1.code(), income, rate, baseIncome, expectedContribution, "1669");
 
     // RCI T2
     rate = new BigDecimal("8.00");
     baseIncome = BigDecimal.ZERO;
     expectedContribution = BigDecimal.ZERO.setScale(2);
-    compute(RetraiteComplémentaireT2.code(), income, rate, baseIncome, expectedContribution, "0");
+    compute(RetraiteComplementaireT2.code(), income, rate, baseIncome, expectedContribution, "0");
 
 //    // RCI
 //    rate = new BigDecimal("1"); // not significant
@@ -188,7 +188,7 @@ class Calculator2018Test {
     rate = new BigDecimal("1.30");
     baseIncome = income;
     expectedContribution = new BigDecimal("309.98");
-    compute(InvalidititéDécès.code(), income, rate, baseIncome, expectedContribution, "310");
+    compute(InvalidititeDeces.code(), income, rate, baseIncome, expectedContribution, "310");
 
     // AF
     rate = BigDecimal.ZERO.setScale(2); // R < 110% * PASS
@@ -253,19 +253,19 @@ class Calculator2018Test {
     rate = new BigDecimal("7.00");
     baseIncome = income;
     expectedContribution = new BigDecimal("806.40");
-    compute(RetraiteComplémentaireT1.code(), income, rate, baseIncome, expectedContribution, "806");
+    compute(RetraiteComplementaireT1.code(), income, rate, baseIncome, expectedContribution, "806");
 
     // RCI T2
     rate = new BigDecimal("8.00");
     baseIncome = BigDecimal.ZERO;
     expectedContribution = BigDecimal.ZERO.setScale(2);
-    compute(RetraiteComplémentaireT2.code(), income, rate, baseIncome, expectedContribution, "0");
+    compute(RetraiteComplementaireT2.code(), income, rate, baseIncome, expectedContribution, "0");
 
     // RID
     rate = new BigDecimal("1.30");
     baseIncome = income;
     expectedContribution = new BigDecimal("149.76");
-    compute(InvalidititéDécès.code(), income, rate, baseIncome, expectedContribution, "150");
+    compute(InvalidititeDeces.code(), income, rate, baseIncome, expectedContribution, "150");
 
     // AF
     rate = BigDecimal.ZERO.setScale(2); // R < 110% * PASS
@@ -288,13 +288,13 @@ class Calculator2018Test {
     final BigDecimal yearlyIncome = BigDecimal.valueOf(12 * 2000 + 1);
 
     // yearly income based calculation
-    Map<String, ContributionInternal> yearlyContributions = calculator.computeFromYearlyIncome(yearlyIncome, false);
+    Map<String, ContributionInternal> yearlyContributions = calculator.computeFromYearlyIncome(yearlyIncome);
     BigDecimal totalYearlyContributions = yearlyContributions.values().stream()
         .map(contribution -> contribution.contribution)
         .reduce(BigDecimal.ZERO, (sum, contribution) -> sum.add(contribution));
 
     BigDecimal monthlyIncome = yearlyIncome.divide(monthCount, 8, RoundingMode.CEILING);
-    Map<String, ContributionInternal> monthlyContributions = calculator.computeFromYearlyIncome(monthlyIncome.multiply(monthCount), false);
+    Map<String, ContributionInternal> monthlyContributions = calculator.computeFromYearlyIncome(monthlyIncome.multiply(monthCount));
     BigDecimal totalMonthlyContributions = monthlyContributions.values().stream()
         .map(contribution -> contribution.contribution)
         .reduce(BigDecimal.ZERO, (sum, contribution) -> sum.add(contribution));
@@ -310,13 +310,13 @@ class Calculator2018Test {
 
     // monthly income based calculation
     Map<String, ContributionInternal> monthlyContributions =
-        calculator.computeFromMonthlyIncome(Month.JANUARY, monthlyIncome, false, Optional.empty());
+        calculator.computeFromMonthlyIncome(Month.JANUARY, monthlyIncome, Optional.empty());
     BigDecimal totalMonthlyContributions = monthlyContributions.values().stream()
         .map(contribution -> contribution.contribution)
         .reduce(BigDecimal.ZERO, (sum, contribution) -> sum.add(contribution));
 
     BigDecimal yearlyIncome = monthlyIncome.multiply(monthCount);
-    Map<String, ContributionInternal> yearlyContributions = calculator.computeFromYearlyIncome(yearlyIncome, false);
+    Map<String, ContributionInternal> yearlyContributions = calculator.computeFromYearlyIncome(yearlyIncome);
     BigDecimal totalYearlyContributions = yearlyContributions.values().stream()
         .map(contribution -> contribution.contribution)
         .reduce(BigDecimal.ZERO, (sum, contribution) -> sum.add(contribution));
@@ -346,7 +346,7 @@ class Calculator2018Test {
 
     // monthly income based calculation
     Map<String, ContributionInternal> monthlyContributions =
-        monthCalculator2018.computeFromMonthlyIncome(Month.APRIL, monthlyIncome, false, Optional.empty());
+        monthCalculator2018.computeFromMonthlyIncome(Month.APRIL, monthlyIncome, Optional.empty());
     BigDecimal totalMonthlyContributions = monthlyContributions.values().stream()
         .map(contribution -> contribution.contribution)
         .reduce(BigDecimal.ZERO, (sum, contribution) -> sum.add(contribution));

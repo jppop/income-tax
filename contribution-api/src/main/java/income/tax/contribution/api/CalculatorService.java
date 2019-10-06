@@ -17,7 +17,7 @@ public interface CalculatorService extends Service {
   default Descriptor descriptor() {
     return named("contribution")
         .withCalls(
-            pathCall("/api/contribution", this::compute)
+            pathCall("/api/contributions", this::compute)
         )
         .withAutoAcl(true);
   }

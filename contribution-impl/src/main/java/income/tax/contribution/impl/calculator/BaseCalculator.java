@@ -14,22 +14,22 @@ import static income.tax.contribution.impl.calculator.BaseCalculator.Contributio
 
 public abstract class BaseCalculator implements Calculator, CalculationConstantProvider {
 
-  final RoundingMode roundingMode;
-  final MathContext mc;
+  private final RoundingMode roundingMode;
+  private final MathContext mc;
 
-  final BigDecimal pass;
-  final BigDecimal prci;
-  final BigDecimal csgRate;
-  final BigDecimal passX4;
-  final BigDecimal passX5;
-  final BigDecimal pass40percent;
-  final BigDecimal pass110;
-  final BigDecimal pass0115;
+  private final BigDecimal pass;
+  private final BigDecimal prci;
+  private final BigDecimal csgRate;
+  private final BigDecimal passX4;
+  private final BigDecimal passX5;
+  private final BigDecimal pass40percent;
+  private final BigDecimal pass110;
+  private final BigDecimal pass0115;
 
   private static final ContributionType[] contributionToBeComputed = new ContributionType[] {
       Maladie1T1, Maladie1T2, Maladie2,
-      RetraiteT1, RetraiteT2, RetraiteComplémentaireT1, RetraiteComplémentaireT2,
-      InvalidititéDécès, AllocationsFamiliales, CSG_CRDS
+      RetraiteT1, RetraiteT2, RetraiteComplementaireT1, RetraiteComplementaireT2,
+      InvalidititeDeces, AllocationsFamiliales, CSG_CRDS
   };
   private ContributionCalculator defaultContributionCalculator
       = (income, baseIncome, rate) -> baseIncome.multiply(rate.scaleByPowerOfTen(-2), mathContext());
@@ -62,11 +62,11 @@ public abstract class BaseCalculator implements Calculator, CalculationConstantP
   }
 
   @Override
-  public Map<String, ContributionInternal> computeFromYearlyIncome(BigDecimal income, boolean round) {
+  public Map<String, ContributionInternal> computeFromYearlyIncome(BigDecimal income) {
     Map<String, ContributionInternal> contributions = new LinkedHashMap<>();
 
     for (ContributionType type: contributionToBeComputed) {
-      ContributionInternal contributionInternal = compute(income, round, type.code());
+      ContributionInternal contributionInternal = compute(income, type.code());
       contributions.put(contributionInternal.type, contributionInternal);
     }
 
@@ -76,11 +76,11 @@ public abstract class BaseCalculator implements Calculator, CalculationConstantP
   @Override
   public Map<String, ContributionInternal>
   computeFromMonthlyIncome(
-      Month month, BigDecimal income, boolean round, Optional<Map<String, Object>> additionalArgs) {
+      Month month, BigDecimal income, Optional<Map<String, Object>> additionalArgs) {
 
     Map<String, ContributionInternal> contributions = new LinkedHashMap<>();
     final BigDecimal monthCount = BigDecimal.valueOf(12);
-    Map<String, ContributionInternal> yearlyContributions = computeFromYearlyIncome(income.multiply(monthCount), round);
+    Map<String, ContributionInternal> yearlyContributions = computeFromYearlyIncome(income.multiply(monthCount));
     for (Map.Entry<String, ContributionInternal> entry : yearlyContributions.entrySet()) {
       ContributionInternal yearlyContributionInternal = entry.getValue();
       contributions.put(
@@ -95,13 +95,10 @@ public abstract class BaseCalculator implements Calculator, CalculationConstantP
     return contributions;
   }
 
-  private ContributionInternal compute(BigDecimal income, boolean round, String code) {
+  private ContributionInternal compute(BigDecimal income, String code) {
     ContributionConfig contributionConfig = contributionConfigs.get(code);
     BigDecimal baseIncome = contributionConfig.baseIncomeCalculator.compute(income);
     BigDecimal contributionAmount = contributionConfig.compute(income);
-    if (round) {
-      contributionAmount = round(contributionAmount);
-    }
     // informative rate
     BigDecimal rate;
     if (baseIncome.compareTo(BigDecimal.ZERO) == 0) {
@@ -132,14 +129,14 @@ public abstract class BaseCalculator implements Calculator, CalculationConstantP
     for (ContributionType contributionType: contributionToBeComputed) {
       types.add(contributionType.code());
     }
-    return types.toArray(new String[types.size()]);
+    return types.toArray(new String[0]);
   }
 
   Map<String, ContributionConfig> contributionConfigs() {
     return Collections.unmodifiableMap(contributionConfigs);
   }
 
-  protected void configure() {
+  private void configure() {
 
     ContributionConfig contributionConfig;
 
@@ -301,7 +298,7 @@ public abstract class BaseCalculator implements Calculator, CalculationConstantP
         (income) -> new BigDecimal("7.00"),
         defaultContributionCalculator
     );
-    contributionConfigs.put(RetraiteComplémentaireT1.code(), contributionConfig);
+    contributionConfigs.put(RetraiteComplementaireT1.code(), contributionConfig);
 
     // RCI T2: Retraite complémentaire T2
     contributionConfig = new ContributionConfig(
@@ -319,7 +316,7 @@ public abstract class BaseCalculator implements Calculator, CalculationConstantP
         (income) -> new BigDecimal("8"),
         defaultContributionCalculator
     );
-    contributionConfigs.put(RetraiteComplémentaireT2.code(), contributionConfig);
+    contributionConfigs.put(RetraiteComplementaireT2.code(), contributionConfig);
 
     // RCI = RCI T1 + RCI T2
     contributionConfig = new ContributionConfig(
@@ -329,12 +326,12 @@ public abstract class BaseCalculator implements Calculator, CalculationConstantP
         (income) -> new BigDecimal("1"), // not really significant
         (income, baseIncome, rate) -> {
           // Get RVB T1 contributions
-          ContributionConfig t1 = contributionConfigs.get(RetraiteComplémentaireT1.code());
+          ContributionConfig t1 = contributionConfigs.get(RetraiteComplementaireT1.code());
           BigDecimal baseIncomeT1 = t1.baseIncomeCalculator.compute(income);
           BigDecimal rateT1 = t1.rateCalculator.compute(income);
           BigDecimal contribT1 = t1.contributionCalculator.compute(income, baseIncomeT1, rateT1);
           // Get RVB T2 contributions
-          ContributionConfig t2 = contributionConfigs.get(RetraiteComplémentaireT2.code());
+          ContributionConfig t2 = contributionConfigs.get(RetraiteComplementaireT2.code());
           BigDecimal baseIncomeT2 = t2.baseIncomeCalculator.compute(income);
           BigDecimal rateT2 = t2.rateCalculator.compute(income);
           BigDecimal contribT2 = t2.contributionCalculator.compute(income, baseIncomeT2, rateT2);
@@ -342,7 +339,7 @@ public abstract class BaseCalculator implements Calculator, CalculationConstantP
           return contribT1.add(contribT2);
         }
     );
-    contributionConfigs.put(RetraiteComplémentaire.code(), contributionConfig);
+    contributionConfigs.put(RetraiteComplementaire.code(), contributionConfig);
 
     // RID: Invalidité-décès
     contributionConfig = new ContributionConfig(
@@ -360,7 +357,7 @@ public abstract class BaseCalculator implements Calculator, CalculationConstantP
         (income) -> new BigDecimal("1.30"),
         defaultContributionCalculator
     );
-    contributionConfigs.put(InvalidititéDécès.code(), contributionConfig);
+    contributionConfigs.put(InvalidititeDeces.code(), contributionConfig);
 
     // AF: Allocation familiales
     contributionConfig = new ContributionConfig(
@@ -400,10 +397,10 @@ public abstract class BaseCalculator implements Calculator, CalculationConstantP
     RetraiteT1("RVB T1"), // Retraite de base dans la limite de PASS
     RetraiteT2("RVB T2"), // Retraite de base au delà de PASS
     Retraite("RVB"), // Retraite de base = RVBT1 + RVBT2
-    RetraiteComplémentaireT1("RCI T1"), // Retraite complémentaire dans la limite de PRCI
-    RetraiteComplémentaireT2("RCI T2"), // Retraite complémentaire entre PRCI et 4 x PASS
-    RetraiteComplémentaire("RCI"), // Retraite complémentaire = RCI T1 + RCI T2
-    InvalidititéDécès("RID"), // Invalidité-décès dans la limite de PASS
+    RetraiteComplementaireT1("RCI T1"), // Retraite complémentaire dans la limite de PRCI
+    RetraiteComplementaireT2("RCI T2"), // Retraite complémentaire entre PRCI et 4 x PASS
+    RetraiteComplementaire("RCI"), // Retraite complémentaire = RCI T1 + RCI T2
+    InvalidititeDeces("RID"), // Invalidité-décès dans la limite de PASS
     AllocationsFamiliales("AF"),
     CSG_CRDS("CSG/CRDS");
 
